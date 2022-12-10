@@ -14,10 +14,6 @@ from einops import rearrange,repeat
 # -- dev_basics --
 from dev_basics import net_chunks
 
-# -- test func --
-from torch.nn.functional import fold,unfold,pad
-from torchvision.transforms.functional import center_crop
-
 #
 # -- Primary Testing Class --
 #
@@ -38,9 +34,9 @@ def pytest_generate_tests(metafunc):
         if key in metafunc.fixturenames:
             metafunc.parametrize(key,val)
 
-def test_channel_chunks(T,C,H,W,spatial_chunk_size,spatial_chunk_overlap,
-                        temporal_chunk_size,temporal_chunk_overlap,
-                        channel_chunk_size,channel_chunk_overlap):
+def test_chunks(T,C,H,W,spatial_chunk_size,spatial_chunk_overlap,
+                temporal_chunk_size,temporal_chunk_overlap,
+                channel_chunk_size,channel_chunk_overlap):
 
     # -- test config --
     device = "cuda:0"
