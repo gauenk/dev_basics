@@ -7,6 +7,10 @@ Manage experiment files
 import yaml
 from .mesh import mesh_groups,add_cfg
 
+def load(fn): # read + unpack
+    edata = read(fn)
+    return unpack(edata)
+
 def read(fn):
     with open(fn,"r") as stream:
         data = yaml.safe_load(stream)
