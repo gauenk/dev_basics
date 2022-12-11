@@ -34,9 +34,12 @@ def run_zeros(vid,sigma=0.):
     flows.bflow = th.zeros((b,t,2,h,w),device=device)
     return flows
 
-def orun(noisy,run_bool=True): # optional run
+def orun(noisy,run_bool=True,sigma=None): # optional run
     if run_bool:
-        sigma_est = est_sigma(noisy)
+        if sigma is None:
+            sigma_est = est_sigma(noisy)
+        else:
+            sigma_est = sigma
         flows = run_batch(noisy[None,:],sigma_est)
     else:
         flows = run_zeros(noisy[None,:])
@@ -55,12 +58,12 @@ def run_batch(vid,sigma,ftype="cv2"):
     return flows
 
 def run(vid_in,sigma,ftype="cv2"):
-    if ftype == "cv":
+    if ftype == "cv2":
         return run_cv2(vid_in,sigma)
     elif ftype == "svnlb":
         return run_svnlb(vid_in,sigma)
     else:
-        raise ValueError("Uknown flow type [{ftype}]")
+        raise ValueError(f"Uknown flow type [{ftype}]")
 
 #
 # -- details --
