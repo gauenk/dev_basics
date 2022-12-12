@@ -20,6 +20,13 @@ def extract_pairs(pairs,_cfg,optional):
         cfg[key] = optional(_cfg,key,val)
     return cfg
 
+def extract_config(_fields,_cfg):
+    cfg = {}
+    for field in _fields:
+        if field in _cfg:
+            cfg[field] = _cfg[field]
+    return edict(cfg)
+
 def _vprint(verbose,*args,**kwargs):
     if verbose:
         print(*args,**kwargs)

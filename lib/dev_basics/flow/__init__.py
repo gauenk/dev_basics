@@ -184,6 +184,34 @@ def pair2flow_gpu(frame_a,frame_b,device):
 
     return flow
 
+def index_at(in_flows,index,dim):
+    if in_flows is None:
+        return None
+    out_flows = edict()
+    if dim == 0:
+        out_flows.fflow = in_flows.fflow[index]
+        out_flows.bflow = in_flows.bflow[index]
+    else:
+        raise ValueError("Find a better way.")
+    # index = th.LongTensor([index]).to(in_flows.fflow.device)
+    # out_flows = edict()
+    # out_flows.fflow = th.index_select(in_flows.fflow,dim,index)
+    # out_flows.bflow = th.index_select(in_flows.bflow,dim,index)
+    return out_flows
+
+def slice_at(in_flows,dslice,dim):
+    if in_flows is None:
+        return None
+    out_flows = edict()
+    # fslice = [slice(None),]*(flows.fflow.ndim-dim) + [dslice,]
+    if dim >= 0:
+        fslice = [slice(None),]*dim + [dslice,]
+    else:
+        fslice = [slice(None),]*(lows.fflow.ndim+dim) + [dslice,]
+    out_flows.fflow = in_flows.fflow[fslice].contiguous()#.clone()
+    out_flows.bflow = in_flows.bflow[fslice].contiguous()#.clone()
+    return out_flows
+
 
 # """
 # Wrap the opencv optical flow

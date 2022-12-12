@@ -8,10 +8,10 @@ from .channel import channel_chunks,extract_channel_config
 # -- config --
 from functools import partial
 from ..common import optional as _optional
-from ..common import optional_fields
+from ..common import optional_fields,extract_config
 _fields = []
 optional_full = partial(optional_fields,_fields)
-
+extract_chunks_config = partial(extract_config,_fields)
 
 #
 # -- api --
@@ -44,12 +44,3 @@ def chunk(cfg,model):
 
 # -- run to populate "_fields" --
 chunk(edict({"__init":True}),None)
-
-# -- config extraction --
-def extract_chunks_config(_cfg):
-    # -- auto populated fields --
-    cfg = {}
-    for field in _fields:
-        if field in _cfg:
-            cfg[field] = _cfg[field]
-    return edict(cfg)
