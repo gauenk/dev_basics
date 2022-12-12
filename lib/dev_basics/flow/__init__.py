@@ -40,9 +40,15 @@ def orun(noisy,run_bool=True,sigma=None): # optional run
             sigma_est = est_sigma(noisy)
         else:
             sigma_est = sigma
-        flows = run_batch(noisy[None,:],sigma_est)
+        if len(noisy.shape) == 5:
+            flows = run_batch(noisy,sigma_est)
+        else:
+            flows = run_batch(noisy[None,:],sigma_est)
     else:
-        flows = run_zeros(noisy[None,:])
+        if len(noisy.shape) == 5:
+            flows = run_zeros(noisy)
+        else:
+            flows = run_zeros(noisy[None,:])
     return flows
 
 def run_batch(vid,sigma,ftype="cv2"):

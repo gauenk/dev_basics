@@ -15,6 +15,10 @@ def mesh(fields):
 
 def mesh_pydicts(fields):
 
+    # -- corner case --
+    if len(fields) == 0:
+        return [{}]
+
     # -- split names and lists --
     names,lists = zip(*fields.items())
 
@@ -27,6 +31,9 @@ def mesh_pydicts(fields):
     return create_named_meshgrid(lists,names)
 
 def mesh_groups(fields,groups):
+    # -- corner case --
+    if len(groups) == 0:
+        return mesh_pydicts(fields)
 
     # -- mesh sets of groups --
     names = OrderedDict()
