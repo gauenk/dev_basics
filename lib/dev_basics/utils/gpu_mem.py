@@ -21,6 +21,11 @@ class GpuMemer(): # like "Timer"
         mems = {"res":mem_res,"alloc":mem_alloc}
         return mems
 
+    def __setitem__(self,name,mems):
+        idx = self.names.index(name)
+        self.mems_res[idx] = mems[0]
+        self.mems_alloc[idx] = mems[1]
+
     def items(self):
         names = ["%s" % name for name in self.names]
         mems = zip(self.mems_res,self.mems_alloc)

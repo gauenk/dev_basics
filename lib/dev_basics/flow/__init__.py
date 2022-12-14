@@ -184,6 +184,12 @@ def pair2flow_gpu(frame_a,frame_b,device):
 
     return flow
 
+def remove_batch(in_flows):
+    if len(in_flows.fflow.shape) == 5:
+        return index_at(in_flows,0,0)
+    else:
+        return in_flows
+
 def index_at(in_flows,index,dim):
     if in_flows is None:
         return None
@@ -207,7 +213,8 @@ def slice_at(in_flows,dslice,dim):
     if dim >= 0:
         fslice = [slice(None),]*dim + [dslice,]
     else:
-        fslice = [slice(None),]*(lows.fflow.ndim+dim) + [dslice,]
+        ndim = in_flows.fflow.ndim
+        fslice = [slice(None),]*(ndim+dim) + [dslice,]
     out_flows.fflow = in_flows.fflow[fslice].contiguous()#.clone()
     out_flows.bflow = in_flows.bflow[fslice].contiguous()#.clone()
     return out_flows
