@@ -28,6 +28,10 @@ class ExpTimer():
         self.names.append(name)
         self.times.append(time)
 
+    def keys(self):
+        names = ["timer_%s" % name for name in self.names]
+        return names
+
     def items(self):
         names = ["timer_%s" % name for name in self.names]
         return zip(names,self.times)
@@ -41,6 +45,7 @@ class ExpTimer():
         if self.use_timer is False: return
         th.cuda.synchronize()
         if name in self.names:
+            print(self.names)
             raise ValueError("Name [%s] already in list." % name)
         self.names.append(name)
         self.times.append(-1)

@@ -7,6 +7,9 @@ from einops import rearrange,repeat
 from PIL import Image
 from pathlib import Path
 
+def save_video(burst,root,name):
+    save_burst(burst,root,name)
+
 def save_burst(burst,root,name):
 
     # -- path --

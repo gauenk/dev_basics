@@ -34,21 +34,20 @@ def run_zeros(vid,sigma=0.):
     flows.bflow = th.zeros((b,t,2,h,w),device=device)
     return flows
 
-def orun(noisy,run_bool=True,sigma=None): # optional run
+def orun(noisy,run_bool=True,sigma=None,ftype="cv2"): # optional run
     if run_bool:
         if sigma is None:
             sigma_est = est_sigma(noisy)
         else:
             sigma_est = sigma
-        if len(noisy.shape) == 5:
-            flows = run_batch(noisy,sigma_est)
-        else:
-            flows = run_batch(noisy[None,:],sigma_est)
+        if len(noisy.shape) == 4:
+            noisy = noisy[None,:]
+        print(noisy.shape)
+        flows = run_batch(noisy,sigma_est,ftype)
     else:
-        if len(noisy.shape) == 5:
-            flows = run_zeros(noisy)
-        else:
-            flows = run_zeros(noisy[None,:])
+        if len(noisy.shape) == 4:
+            noisy = noisy[None,:]
+        flows = run_zeros(noisy)
     return flows
 
 def run_batch(vid,sigma,ftype="cv2"):
@@ -79,12 +78,20 @@ def run_svnlb(vid_in,sigma):
 
     # -- run --
     vid_in_c = vid_in.cpu().numpy()
+    if vid_in_c.shape[-3] == 1:
+        vid_in_c = repeat(vid_in_c,'b 1 h w -> b c h w',c=3)
     fflow,bflow = svnlb.swig.runPyFlow(vid_in_c,sigma)
 
     # -- packing --
     flows = edict()
     flows.fflow = th.from_numpy(fflow).to(vid_in.device)
     flows.bflow = th.from_numpy(bflow).to(vid_in.device)
+
+    # -- append zeros --
+    zflow = th.zeros_like(flows.fflow[[0]])
+    flows.fflow = th.cat([flows.fflow,zflow],0)
+    flows.bflow = th.cat([zflow,flows.bflow],0)
+
     return flows
 
 def run_cv2(vid_in,sigma,rescale=True):

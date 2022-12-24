@@ -18,9 +18,11 @@ def read(fn):
 
 def unpack(edata):
     cfg = edata['cfg']
-    grids = edata['global_grids']
     groups = [v for g,v in edata.items() if "group" in g]
-    exps = mesh_groups(grids,groups)
+    grids = [v for g,v in edata.items() if "global_grids" in g]
+    exps = []
+    for grid in grids:
+        exps += mesh_groups(grid,groups)
     add_cfg(exps,cfg)
     return exps
 
