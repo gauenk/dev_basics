@@ -48,3 +48,4 @@ def run(records,fields,fields_summ,res_fields,res_fmt):
                 res += res_fmt[field] % (gdf[field].mean()) + " "
             report += res + "\n"
     return report
+

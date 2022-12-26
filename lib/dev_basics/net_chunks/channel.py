@@ -60,7 +60,6 @@ def run_channel_chunks(fwd_fxn,size,overlap,vid,flows=None,verbose=False):
     # -- normalize --
     V = len(vid.shape)
     Z = Z.expand((1,)*(V-3) + Z.shape)
-    # Z = expand_match(deno.shape,Z,-3)
     deno /= Z
     return deno
 

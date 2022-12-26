@@ -23,10 +23,10 @@ def pytest_generate_tests(metafunc):
     th.manual_seed(seed)
     np.random.seed(seed)
     vshape_list = {"T":[6,8],"C":[3,5,9],"H":[32,128],"W":[64,96]}
-    chunk_list = {"spatial_chunk_size":[0,32,64],
-                   "spatial_chunk_overlap":[0,0.25,0.8],
+    chunk_list = {"spatial_chunk_size":[32,64],
+                   "spatial_chunk_overlap":[0,0.25],
                    "temporal_chunk_size":[0,2,4],
-                   "temporal_chunk_overlap":[0,0.1,0.5],
+                   "temporal_chunk_overlap":[0,0.3],
                    "channel_chunk_size":[0,3,9],
                    "channel_chunk_overlap":[0,0.5]}
     test_list = vshape_list | chunk_list
@@ -40,17 +40,17 @@ def test_chunks(T,C,H,W,spatial_chunk_size,spatial_chunk_overlap,
 
     # -- test config --
     device = "cuda:0"
-    B,T,C,H,W = 3,5,12,56,64
+    B = 3
     vshape = (B,T,C,H,W)
 
     # -- chunk config --
     cfg = edict()
-    cfg.spatial_chunk_size = 0
-    cfg.spatial_chunk_overlap = 0.1
-    cfg.temporal_chunk_size = 0
-    cfg.temporal_chunk_overlap = 0.5
-    cfg.channel_chunk_size = 0
-    cfg.channel_chunk_overlap = 0.1
+    cfg.spatial_chunk_size = spatial_chunk_size
+    cfg.spatial_chunk_overlap = spatial_chunk_overlap
+    cfg.temporal_chunk_size = temporal_chunk_size
+    cfg.temporal_chunk_overlap = temporal_chunk_overlap
+    cfg.channel_chunk_size = channel_chunk_size
+    cfg.channel_chunk_overlap = channel_chunk_overlap
 
     # -- vid --
     vid = th.ones(vshape,device=device)
@@ -76,10 +76,10 @@ def test_chunks(T,C,H,W,spatial_chunk_size,spatial_chunk_overlap,
     t_size = cfg.temporal_chunk_size
     c_size = cfg.channel_chunk_size
     s_size = cfg.spatial_chunk_size
-    t_size = t_size if t_size > 0 else T
-    c_size = c_size if c_size > 0 else C
-    sh_size = s_size if s_size > 0 else H
-    sw_size = s_size if s_size > 0 else W
+    t_size = min(t_size,T) if t_size > 0 else T
+    c_size = min(c_size,C) if c_size > 0 else C
+    sh_size = min(s_size,H) if s_size > 0 else H
+    sw_size = min(s_size,W) if s_size > 0 else W
     tgt_size = np.array([B,t_size,c_size,sh_size,sw_size])
     error = 0
     for size in sizes:
