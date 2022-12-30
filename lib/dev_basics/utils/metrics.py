@@ -1,7 +1,10 @@
 import torch as th
 import numpy as np
+from einops import rearrange
+from skimage.color import rgb2gray
 from skimage.metrics import peak_signal_noise_ratio as comp_psnr
 from skimage.metrics import structural_similarity as compute_ssim_ski
+from skvideo.measure import strred as comp_strred
 
 def compute_ssims(clean,deno,div=255.):
     nframes = clean.shape[0]
@@ -31,4 +34,24 @@ def compute_psnrs(clean,deno,div=255.):
         psnrs.append(psnr_ti)
     return np.array(psnrs)
 
+
+def compute_strred(clean,deno,div=255):
+
+    # -- numpify --
+    clean = clean.detach().cpu().numpy()
+    deno = deno.detach().cpu().numpy()
+
+    # -- reshape --
+    clean = rearrange(clean,'t c h w -> t h w c')/div
+    deno = rearrange(deno,'t c h w -> t h w c')/div
+
+    # -- bw --
+    if clean.shape[-1] == 3:
+        clean = rgb2gray(clean,channel_axis=-1)
+        deno = rgb2gray(deno,channel_axis=-1)
+
+    # -- compute --
+    outs = comp_strred(clean,deno)
+    strred = outs[1] # get float
+    return strred
 
