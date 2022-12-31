@@ -25,6 +25,7 @@ except:
 
 # -- local --
 from ..utils import color
+from ..utils.misc import rslice as rslice_tensor
 
 def run_zeros(vid,sigma=0.):
     device = vid.device
@@ -225,6 +226,12 @@ def slice_at(in_flows,dslice,dim):
     out_flows.fflow = in_flows.fflow[fslice].contiguous()#.clone()
     out_flows.bflow = in_flows.bflow[fslice].contiguous()#.clone()
     return out_flows
+
+def rslice(flows,region):
+    _flows = edict()
+    for key in flows:
+        _flows[key] = rslice_tensor(flows[key],region)
+    return _flows
 
 
 # """

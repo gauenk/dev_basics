@@ -24,7 +24,7 @@ def rslice(vid,coords):
         coords = coords.type(th.int)
         coords = list(coords.cpu().numpy())
     fs,fe,t,l,b,r = coords
-    return vid[fs:fe,:,t:b,l:r]
+    return vid[...,fs:fe,:,t:b,l:r]
 
 def slice_flows(flows,t_start,t_end):
     if flows is None: return flows
