@@ -51,3 +51,13 @@ def save_image(image,path):
     # -- save --
     img = Image.fromarray(image)
     img.save(path)
+
+def read_files(fns):
+    vid = []
+    for fn in fns:
+        img = np.array(Image.open(fn))
+        img = rearrange(img,'h w c -> c h w')
+        img = th.from_numpy(img)
+        vid.append(img)
+    vid = th.stack(vid)
+    return vid
