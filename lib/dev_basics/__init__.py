@@ -7,3 +7,4 @@ from . import aug_test
 from . import utils
 from . import reports
 from . import exps
+from .utils import metrics

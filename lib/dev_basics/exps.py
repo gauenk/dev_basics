@@ -6,6 +6,8 @@ Manage experiment files
 
 import yaml
 from .mesh import mesh_groups,add_cfg
+from .mesh import read_rm_picked,append_picked
+
 
 def load(fn): # read + unpack
     edata = read(fn)
@@ -26,3 +28,9 @@ def unpack(edata):
     add_cfg(exps,cfg)
     return exps
 
+
+def load_picked(fn):
+    edata = read(fn)
+    picks = read_rm_picked(edata)
+    exps = unpack(edata)
+    return append_picked(exps,picks)

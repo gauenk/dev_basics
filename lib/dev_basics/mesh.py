@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from easydict import EasyDict as edict
+from copy import deepcopy as dcopy
 
 
 #
@@ -45,16 +46,19 @@ def mesh_groups(fields,groups):
     # -- create sets of mesh --
     _mesh = []
     for group_nums_d in groups_mesh:
-        group_nums = [group_nums_d[g] for g in names.keys()]
-        for gnum,group in zip(group_nums,groups):
-            # -- set all fields --
-            for field in group:
-                elem = group[field][int(gnum)]
-                elem = elem if isinstance(elem,list) else [elem]
-                fields[field] = elem
         # -- append --
+        group_nums = [group_nums_d[g] for g in names.keys()]
+        set_fields_with_group(fields,groups,group_nums)
         _mesh += mesh(fields)
     return _mesh
+
+def set_fields_with_group(fields,groups,group_nums):
+    for gnum,group in zip(group_nums,groups):
+        # -- set all fields --
+        for field in group:
+            elem = group[field][int(gnum)]
+            elem = elem if isinstance(elem,list) else [elem]
+            fields[field] = elem
 
 def add_cfg(cfg_list,cfg2append):
     append_configs(cfg_list,cfg2append)
@@ -151,4 +155,34 @@ def create_list_pairs(fields):
             if f1 >= f2: continue
             pairs.append([field1,field2])
     return pairs
+
+
+#
+# -- read all fields with "picked"
+#
+
+def read_rm_picked(edata):
+    picked = {key:edata[key] for key in edata.keys() if "pick" in key}
+    for key in picked.keys():
+        del edata[key]
+    return picked
+
+def append_picked(exps,picked):
+    full_exps = []
+    for picked_key in picked:
+        pcfg = picked[picked_key]
+        picked_field = picked_key.split("_")[1]
+        for e in exps:
+            fval = e[picked_field]
+            pindex = pcfg[picked_field].index(fval)
+            pcfg_ = {key:pcfg[key][pindex] for key in pcfg.keys()}
+            for key in pcfg_:
+                if not(isinstance(pcfg_[key],list)):
+                    pcfg_[key] = [pcfg_[key]]
+                else:
+                    pcfg_[key] = pcfg_[key]
+            pexps = mesh(pcfg_)
+            add_cfg(pexps,e)
+            full_exps.extend(pexps)
+    return full_exps
 
