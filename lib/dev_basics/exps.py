@@ -2,6 +2,8 @@
 
 Manage experiment files
 
+probably belongs in cache_io
+
 """
 
 import yaml

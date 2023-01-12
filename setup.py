@@ -29,4 +29,7 @@ setup(
     install_requires=['numpy','torch'],
     package_dir={"": "lib"},
     packages=find_packages("lib"),
+    entry_points = {
+        'console_scripts': ['timed_launch=dev_basics.timed_launch:main'],
+    }
 )
