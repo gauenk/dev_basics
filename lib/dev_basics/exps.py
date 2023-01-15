@@ -17,7 +17,6 @@ def load(fn): # read + unpack
     return unpack(edata)
 
 def read(fn):
-    print("[dev_basics.exps] Moving this to cache_io.")
     with open(fn,"r") as stream:
         data = yaml.safe_load(stream)
     return data

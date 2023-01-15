@@ -49,7 +49,6 @@ def set_seed(seed):
     np.random.seed(seed)
 
 def read_yaml(fn):
-    print("[dev_basics.exps] Moving this to cache_io.")
     with open(fn,"r") as stream:
         data = yaml.safe_load(stream)
     return data

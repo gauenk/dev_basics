@@ -43,7 +43,6 @@ def orun(noisy,run_bool=True,sigma=None,ftype="cv2"): # optional run
             sigma_est = sigma
         if len(noisy.shape) == 4:
             noisy = noisy[None,:]
-        print(noisy.shape)
         flows = run_batch(noisy,sigma_est,ftype)
     else:
         if len(noisy.shape) == 4:
@@ -64,13 +63,26 @@ def run_batch(vid,sigma,ftype="cv2"):
     return flows
 
 def run(vid_in,sigma,ftype="cv2"):
-    if ftype == "cv2":
-        return run_cv2(vid_in,sigma)
+    if "cv2" in ftype:
+        fxn_s,dev_s = get_fxn_s(ftype)
+        return run_cv2(vid_in,sigma,fxn_s,dev_s)
     elif ftype == "svnlb":
         return run_svnlb(vid_in,sigma)
     else:
         raise ValueError(f"Uknown flow type [{ftype}]")
 
+def get_fxn_s(ftype):
+    # cv2_<function_string_here>
+    if not("_" in ftype):
+        return "farne","cpu"
+    else:
+        name = ftype.split("_")[1:]
+        if len(name) == 1:
+            return name[0],"cpu"
+        elif len(name) == 2:
+            return name[0],name[1]
+        else:
+            raise ValueError("Should only by cv2_<fname>_<cpu/gpu>")
 #
 # -- details --
 #
@@ -95,7 +107,10 @@ def run_svnlb(vid_in,sigma):
 
     return flows
 
-def run_cv2(vid_in,sigma,rescale=True):
+def run_cv2(vid_in,sigma,fxn_s,dev_s,rescale=True):
+
+    # -- get flow function --
+    flow_fxn = get_flow_fxn(fxn_s,dev_s)
 
     # -- init --
     device = vid_in.device
@@ -120,9 +135,9 @@ def run_cv2(vid_in,sigma,rescale=True):
 
     # -- computing --
     for ti in range(t-1):
-        fflow[ti] = pair2flow(vid[ti],vid[ti+1],device)
+        fflow[ti] = pair2flow(vid[ti],vid[ti+1],flow_fxn,device)
     for ti in reversed(range(t-1)):
-        bflow[ti+1] = pair2flow(vid[ti+1],vid[ti],device)
+        bflow[ti+1] = pair2flow(vid[ti+1],vid[ti],flow_fxn,device)
 
     # -- final shaping --
     # fflow = rearrange(fflow,'t h w c -> t c h w')
@@ -147,50 +162,70 @@ def est_sigma(vid):
     sigma = estimate_sigma(vid_np,channel_axis=1)[0]
     return sigma
 
-def pair2flow(frame_a,frame_b,device):
-    if "cpu" in str(frame_a.device):
-        return pair2flow_cpu(frame_a,frame_b,device)
+def get_flow_fxn(fxn_s,dev_s):
+    # print("dev_s: ",dev_s)
+    if dev_s == "gpu":
+        return get_flow_fxn_gpu(fxn_s)
+    elif dev_s == "cpu":
+        return get_flow_fxn_cpu(fxn_s)
     else:
-        return pair2flow_gpu(frame_a,frame_b,device)
+        raise ValueError("Uknown device [%s]" % dev_s)
 
-def pair2flow_cpu(frame_a,frame_b,device):
+def get_flow_fxn_gpu(fxn_s):
+    if fxn_s == "farne":
+        def wrapper(frame_curr,frame_next):
+            frame_curr,frame_next = pair2gpu(frame_curr,frame_next)
+            optical_flow = cv.cuda.FarnebackOpticalFlow_create()
+            flow = optical_flow.calc(frame_curr,frame_next,None)
+            return flow.download()
+    elif fxn_s == "tvl1":
+        def wrapper(frame_curr,frame_next):
+            frame_curr,frame_next = pair2gpu(frame_curr,frame_next)
+            optical_flow = cv.cuda.OpticalFlowDual_TVL1_create()
+            flow = optical_flow.calc(frame_curr, frame_next, None)
+            return flow.download()
+    else:
+        raise ValueError("Uknown Farneback Flow %s" % flow_fxn_s)
+    return wrapper
+
+def get_flow_fxn_cpu(fxn_s):
+    if fxn_s == "farne":
+        def wrapper(frame_curr,frame_next):
+            return cv.calcOpticalFlowFarneback(frame_curr,frame_next,flow=None,
+                                               pyr_scale=0.5, levels=5,
+                                               winsize=5,iterations=10,
+                                               poly_n=5, poly_sigma=1.2,
+                                               flags=10)
+    elif fxn_s == "tvl1":
+        def wrapper(frame_curr,frame_next):
+            optical_flow = cv.optflow.DualTVL1OpticalFlow_create()
+            flow = optical_flow.calc(frame_curr, frame_next, None)
+            return flow
+    else:
+        raise ValueError("Uknown Farneback Flow %s" % flow_fxn_s)
+    return wrapper
+
+def pair2flow(frame_a,frame_b,flow_fxn,device):
 
     # -- numpy --
     frame_a = frame_a.cpu().numpy()
     frame_b = frame_b.cpu().numpy()
 
     # -- exec flow --
-    # flow = cv.calcOpticalFlowFarneback(frame_a,frame_b,
-    #                                    0.,0.,3,15,3,5,1.,0)
-    flow = cv.calcOpticalFlowFarneback(frame_a,frame_b,flow=None,
-                                       pyr_scale=0.5, levels=5, winsize=5,
-                                       iterations=10, poly_n=5, poly_sigma=1.2,
-                                       flags=10)
+    flow = flow_fxn(frame_a,frame_b)
+
+    # -- format flow --
     flow = flow.transpose(2,0,1)
     flow = th.from_numpy(flow).to(device)
 
     return flow
 
-def pair2flow_gpu(frame_a,frame_b,device):
-
-    # -- create opencv-gpu frames --
+def pair2gpu(frame_a,frame_b):
     gpu_frame_a = cv.cuda_GpuMat()
     gpu_frame_b = cv.cuda_GpuMat()
-    gpu_frame_a.upload(frame_a.cpu().numpy())
-    gpu_frame_b.upload(frame_b.cpu().numpy())
-
-    # -- create flow object --
-    gpu_flow = cv.cuda_FarnebackOpticalFlow.create(5, 0.5, False,
-                                                   15, 3, 5, 1.2, 0)
-
-    # -- exec flow --
-    flow = cv.cuda_FarnebackOpticalFlow.calc(gpu_flow, gpu_frame_a,
-                                             gpu_frame_b, None)
-    flow = flow.download()
-    flow = flow.transpose(2,0,1)
-    flow = th.from_numpy(flow).to(device)
-
-    return flow
+    gpu_frame_a.upload(frame_a)
+    gpu_frame_b.upload(frame_b)
+    return gpu_frame_a,gpu_frame_b
 
 def remove_batch(in_flows):
     if len(in_flows.fflow.shape) == 5:
