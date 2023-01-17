@@ -27,8 +27,32 @@ def extract_config(_fields,_cfg):
             cfg[field] = _cfg[field]
     return edict(cfg)
 
+def set_defaults(defs,pairs):
+    for key,val in defs.items():
+        pairs[key] = val
+
 def _vprint(verbose,*args,**kwargs):
     if verbose:
         print(*args,**kwargs)
 
-
+def cfg2lists(cfg,L):
+    # converts a edict to a list of edicts
+    cfgs = []
+    keys = list(cfg.keys())
+    for l in range(L):
+        cfg_l = edict()
+        for key in keys:
+            if isinstance(cfg[key],list):
+                mid = L//2
+                eq = len(cfg[key]) == L
+                eq_h = len(cfg[key]) == (mid+1)
+                assert eq or eq_h
+                if eq: # index along the list
+                    cfg_l[key] = cfg[key][l]
+                elif eq_h: # reflect list length is half size
+                    li = l if l <= mid else ((L-1)-l)
+                    cfg_l[key] = cfg[key][li]
+            else:
+                cfg_l[key] = cfg[key]
+        cfgs.append(cfg_l)
+    return cfgs

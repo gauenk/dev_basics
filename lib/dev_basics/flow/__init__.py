@@ -23,6 +23,9 @@ try:
 except:
     pass
 
+# -- rescale --
+import torch.nn.functional as tnnf
+
 # -- local --
 from ..utils import color
 from ..utils.misc import rslice as rslice_tensor
@@ -292,6 +295,32 @@ def rslice(flows,region):
         _flows[key] = rslice_tensor(flows[key],region)
     return _flows
 
+
+def rescale_flows(flows_og,H,W):
+
+    # -- corner case --
+    if flows_og is None: return None
+
+    # -- check --
+    B,T,_,_H,_W = flows_og.fflow.shape
+    if _H == H:
+        return flows
+
+    # -- alloc --
+    fflow = flows_og.fflow.view(B*T,2,_H,_W)
+    bflow = flows_og.bflow.view(B*T,2,_H,_W)
+    shape = (H,W)
+
+    # -- create new flows --
+    flows = edict()
+    flows.fflow = tnnf.interpolate(fflow,size=shape,mode="bilinear")
+    flows.bflow = tnnf.interpolate(bflow,size=shape,mode="bilinear")
+
+    # -- reshape --
+    flows.fflow = flows.fflow.view(B,T,2,H,W)
+    flows.bflow = flows.bflow.view(B,T,2,H,W)
+
+    return flows
 
 # """
 # Wrap the opencv optical flow
