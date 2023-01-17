@@ -27,9 +27,12 @@ def extract_config(_fields,_cfg):
             cfg[field] = _cfg[field]
     return edict(cfg)
 
-def set_defaults(defs,pairs):
+def set_defaults(defs,pairs,overwrite=True):
     for key,val in defs.items():
-        pairs[key] = val
+        if overwrite:
+            pairs[key] = val
+        elif not(key in pairs):
+            pairs[key] = val
 
 def _vprint(verbose,*args,**kwargs):
     if verbose:
@@ -46,7 +49,7 @@ def cfg2lists(cfg,L):
                 mid = L//2
                 eq = len(cfg[key]) == L
                 eq_h = len(cfg[key]) == (mid+1)
-                assert eq or eq_h
+                assert eq or eq_h,"Must be shaped for %s & %s" % key
                 if eq: # index along the list
                     cfg_l[key] = cfg[key][l]
                 elif eq_h: # reflect list length is half size

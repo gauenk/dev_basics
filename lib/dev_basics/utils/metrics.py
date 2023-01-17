@@ -6,7 +6,18 @@ from skimage.metrics import peak_signal_noise_ratio as comp_psnr
 from skimage.metrics import structural_similarity as compute_ssim_ski
 from skvideo.measure import strred as comp_strred
 
+def compute_batched(compute_fxn,clean,deno,div=255.):
+    metric = []
+    for b in range(len(clean)):
+        metric_b = compute_fxn(clean[b],deno[b],div)
+        metric.append(metric_b)
+    metric = np.array(metric)
+    return metric
+
 def compute_ssims(clean,deno,div=255.):
+    # -- optional batching --
+    if clean.ndim == 5:
+        return compute_batched(compute_ssims,clean,deno,div)
     nframes = clean.shape[0]
     ssims = []
     for t in range(nframes):
@@ -19,6 +30,9 @@ def compute_ssims(clean,deno,div=255.):
     return ssims
 
 def compute_psnrs(clean,deno,div=255.):
+    # -- optional batching --
+    if clean.ndim == 5:
+        return compute_batched(compute_psnrs,clean,deno,div)
     t = clean.shape[0]
     clean = clean.detach().cpu().numpy()
     deno = deno.detach().cpu().numpy()
@@ -36,6 +50,10 @@ def compute_psnrs(clean,deno,div=255.):
 
 
 def compute_strred(clean,deno,div=255):
+
+    # -- optional batching --
+    if clean.ndim == 5:
+        return compute_batched(compute_strred,clean,deno,div)
 
     # -- numpify --
     clean = clean.detach().cpu().numpy()

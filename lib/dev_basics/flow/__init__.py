@@ -304,7 +304,7 @@ def rescale_flows(flows_og,H,W):
     # -- check --
     B,T,_,_H,_W = flows_og.fflow.shape
     if _H == H:
-        return flows
+        return flows_og
 
     # -- alloc --
     fflow = flows_og.fflow.view(B*T,2,_H,_W)
