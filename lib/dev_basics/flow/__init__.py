@@ -184,9 +184,33 @@ def get_flow_fxn_gpu(fxn_s):
             optical_flow = cv.cuda.OpticalFlowDual_TVL1_create()
             flow = optical_flow.calc(frame_curr, frame_next, None)
             return flow.download()
+    elif fxn_s == "tvl1p":
+        def wrapper(frame_curr,frame_next):
+            args = {"Tau":0.25,"Lambda":0.2,"Theta":0.3,"NumScales":100,
+                    "ScaleStep":1,"NumWarps":5,"Epsilon":0.01,
+                    "NumIterations":300}
+            frame_curr,frame_next = pair2gpu(frame_curr,frame_next)
+            optical_flow = cv.cuda.OpticalFlowDual_TVL1_create()
+            set_params(optical_flow,args)
+            flow = optical_flow.calc(frame_curr, frame_next, None)
+            return flow.download()
+    elif fxn_s == "nofs":
+        def wrapper(frame_curr,frame_next):
+            H,W = frame_curr.shape[-3:-1]
+            frame_curr,frame_next = pair2gpu(frame_curr,frame_next)
+            perfPreset = cv.cuda.NvidiaOpticalFlow_2_0_NV_OF_PERF_LEVEL_SLOW
+            outSize = cv.cuda.NvidiaOpticalFlow_2_0_NV_OF_OUTPUT_VECTOR_GRID_SIZE_1
+            params = {'perfPreset':perfPreset,'outputGridSize':outSize}
+            optical_flow = cv.cuda.NvidiaOpticalFlow_2_0_create((W,H),**params)
+            flow = optical_flow.calc(frame_curr, frame_next, None)[0]
+            return flow.download()
     else:
         raise ValueError("Uknown Farneback Flow %s" % flow_fxn_s)
     return wrapper
+
+def set_params(fxn,args):
+    for key,val in args.items():
+        getattr(fxn,"set%s"%key)(val)
 
 def get_flow_fxn_cpu(fxn_s):
     if fxn_s == "farne":
