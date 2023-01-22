@@ -51,6 +51,7 @@ def orun(noisy,run_bool=True,sigma=None,ftype="cv2"): # optional run
         if len(noisy.shape) == 4:
             noisy = noisy[None,:]
         flows = run_zeros(noisy)
+
     return flows
 
 def run_batch(vid,sigma,ftype="cv2"):
@@ -90,7 +91,11 @@ def get_fxn_s(ftype):
 # -- details --
 #
 
-def run_svnlb(vid_in,sigma):
+def run_svnlb(vid_in,sigma,rescale=True):
+
+    # -- rescale --
+    if rescale:
+        vid_in = vid_in*255.
 
     # -- run --
     vid_in_c = vid_in.cpu().numpy()
@@ -208,7 +213,7 @@ def get_flow_fxn_gpu(fxn_s):
             flow = optical_flow.calc(frame_curr, frame_next, None)[0]
             return flow.download()
     else:
-        raise ValueError("Uknown Farneback Flow %s" % flow_fxn_s)
+        raise ValueError("Uknown Flow %s" % fxn_s)
     return wrapper
 
 def set_params(fxn,args):
@@ -229,7 +234,7 @@ def get_flow_fxn_cpu(fxn_s):
             flow = optical_flow.calc(frame_curr, frame_next, None)
             return flow
     else:
-        raise ValueError("Uknown Farneback Flow %s" % flow_fxn_s)
+        raise ValueError("Uknown Flow %s" % fxn_s)
     return wrapper
 
 def pair2flow(frame_a,frame_b,flow_fxn,device):
