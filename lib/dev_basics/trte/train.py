@@ -16,7 +16,7 @@ from easydict import EasyDict as edict
 import data_hub
 
 # -- modules --
-import importlib
+# import importlib
 
 # -- pytorch-lit --
 import pytorch_lightning as pl
@@ -43,8 +43,14 @@ def train_pairs():
              "persistent_workers":True,
              "rand_order_tr":True,
              "gradient_clip_algorithm":"norm",
+             "gradient_clip_val":0.5,
              "index_skip_val":5,
              "root":".","seed":123,
+             "accumulate_grad_batches":1,
+             "ndevices":1,
+             "precision":32,
+             "limit_train_batches":1.,
+             "nepochs":30
     }
     return pairs
 
@@ -58,16 +64,24 @@ def run(cfg):
     # -=-=-=-=-=-=-=-=-
 
     # -- config --
-    econfig.set_cfg(cfg):
-    python_module = econfig.optional(cfg,"python_module",None)
-    module = importlib.import_module(python_mod)
-    ModelLit = module.lightning.LitModel
-    lit_extract_config = module.lightning.extract_config
-    net_extract_config = module.extract_config
-    cfgs = econfig.extract_pairs({"tr":train_pairs(),
-                                  "lit":lit.extract_config(cfg),
-                                  "net":net.extract_config(cfg)})
-    if cfgs.is_init: return
+    econfig.set_cfg(cfg)
+    net_module = econfig.required_module(cfg,"python_module")
+    lit_module = net_module.lightning
+    sim_module = econfig.optional_module(cfg,"sim_module")
+    net_extract_config = net_module.extract_config
+    lit_extract_config = lit_module.extract_config
+    sim_extract_config = sim_module.extract_config
+    cfgs = econfig.extract({"tr":train_pairs(),
+                            "net":net_extract_config(cfg),
+                            "lit":lit_extract_config(cfg),
+                            "sim":sim_extract_config(cfg)})
+    if econfig.is_init: return
+    print("cfgs.sim: ",cfgs.sim)
+
+    # -- init model/simulator/lightning --
+    net = net_module.load_model(cfgs.net)
+    sim = getattr(sim_module,cfgs.sim.load_fxn)(cfgs.sim)
+    model = lit_module.LitModel(cfgs.lit,net,sim)
 
     # -- set-up --
     print("PID: ",os.getpid())
@@ -83,20 +97,8 @@ def run(cfg):
     chkpt_dir = root / "output/train/checkpoints" / str(cfg.uuid)
     init_paths(log_dir,pik_dir,chkpt_dir)
 
-    # -- network --
-    model = ModelLit(cfs.net,cfgs.lit)
-    # flow=cfg.flow,flow_method=cfg.flow_method,
-    # isize=cfg.isize,batch_size=cfg.batch_size_tr,
-    # lr_init=cfg.lr_init,lr_final=cfg.lr_final,
-    # scheduler=cfg.scheduler,weight_decay=cfg.weight_decay,
-    # nepochs=cfg.nepochs,task=cfg.task,
-    # warmup_epochs=cfg.warmup_epochs,uuid=str(cfg.uuid),
-    # sim_device=cfg.sim_device,sim_type=cfg.sim_type,
-    # deno_clamp=cfg.deno_clamp,
-    # optim=cfg.optim,momentum=cfg.momentum)
-
     # -- init validation performance --
-    run_validation(log_dir,pik_dir,model,cfgs.tr)
+    run_validation(log_dir,pik_dir,timer,model,cfg)
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     #
@@ -124,13 +126,13 @@ def run(cfg):
         swa_callback = StochasticWeightAveraging(swa_lrs=cfg.lr_init,
                                                  swa_epoch_start=cfg.swa_epoch_start)
         callbacks += [swa_callback]
-    trainer = pl.Trainer(accelerator="gpu",devices=cfg.ndevices,precision=32,
-                         accumulate_grad_batches=cfg.accumulate_grad_batches,
-                         limit_train_batches=cfg.limit_train_batches,
-                         limit_val_batches=1.,max_epochs=cfg.nepochs,
+    trainer = pl.Trainer(accelerator="gpu",devices=cfgs.tr.ndevices,precision=32,
+                         accumulate_grad_batches=cfgs.tr.accumulate_grad_batches,
+                         limit_train_batches=cfgs.tr.limit_train_batches,
+                         limit_val_batches=1.,max_epochs=cfgs.tr.nepochs,
                          log_every_n_steps=1,logger=logger,
-                         gradient_clip_val=cfg.gradient_clip_val,
-                         gradient_clip_algorithm=cfg.gradient_clip_algorithm,
+                         gradient_clip_val=cfgs.tr.gradient_clip_val,
+                         gradient_clip_algorithm=cfgs.tr.gradient_clip_algorithm,
                          callbacks=callbacks)
                          # strategy="ddp_find_unused_parameters_false")
     timer.start("train")
@@ -233,7 +235,7 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
     return str(prev_ckpt)
 
 
-def run_validation(log_dir,pik_dir,model,cfg):
+def run_validation(log_dir,pik_dir,timer,model,cfg):
 
     # -- load dataset with testing mods isizes --
     cfg_clone = copy.deepcopy(cfg)

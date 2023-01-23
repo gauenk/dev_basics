@@ -4,9 +4,11 @@ from easydict import EasyDict as edict
 from ..common import optional
 
 # -- auto populate fields to extract config --
-def optional_fields(_fields,init,pydict,field,default):
+def optional_fields(_fields,_pairs,init,pydict,field,default):
     if not(field in _fields) and init:
         _fields.append(field)
+    if not(field in _pairs) and init:
+        _pairs[field] = default
     return optional(pydict,field,default)
 
 def extract_pairs(pairs,_cfg,optional):
@@ -50,3 +52,19 @@ def cfg2lists(cfg,L):
                 cfg_l[key] = cfg[key]
         cfgs.append(cfg_l)
     return cfgs
+
+class SpoofModule():
+
+    def __init__(self):
+        self.cfg = {"load_fxn":"load_sim","sim_type":None}
+        # self.load_fxn = "load"
+        # self.sim_type = "none"
+
+    def extract_config(self,cfg):
+        return self.cfg
+
+    def load(self,cfg):
+        pass
+
+    def load_sim(self,cfg):
+        pass
