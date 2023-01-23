@@ -1,4 +1,28 @@
+"""
 
+Usage:
+
+# .. imports here..
+
+# -- config import --
+from dev_basics.config import ExtractConfig
+econfig = ExtractConfig(__file__)
+extract_config = econfig.extract_config
+
+@econfig.set_init
+def my_fxn_with_configs(dict_like_object):
+
+  pairs0 = {"param1":param1_default,
+           "param2":param2_default,...}
+  pairs1 = {"param1":param1_default,
+           "param2":param2_default,...}
+  econfig.set_cfg(dict_like_object)
+  cfg = econfig({"0":pairs0,"1":pairs1})
+  if econfig.is_init: return
+
+  # .. rest of function ...
+
+"""
 
 from easydict import EasyDict as edict
 
@@ -11,8 +35,9 @@ import importlib
 
 class ExtractConfig():
 
-    def __init__(self,fpath):
+    def __init__(self,fpath,nargs=0):
         self.fpath = fpath
+        self.nargs = nargs
         self.cfg = None
         self.fields = []
         self.pairs = {}
@@ -32,7 +57,7 @@ class ExtractConfig():
         self.optional = partial(optional_fields,self.fields,self.pairs,self.is_init)
 
     def extract_config(self,_cfg,fill_defaults=True):
-        self.init_fxn(edict({self.init_key:True} | _cfg))
+        self.run_init(edict({self.init_key:True} | _cfg))
         cfg = edict(extract_config(self.fields,_cfg))
         if fill_defaults:
             cfg = extract_pairs(self.pairs,cfg,_optional)
@@ -54,9 +79,14 @@ class ExtractConfig():
 
     def set_init(self,fxn):
         self.init_fxn = fxn
-        # if not(self.is_set):
-        #     self.init_fxn({self.init_key:True})
         return fxn
+
+    def run_init(self,cfg):
+        if self.nargs > 0:
+            args = self.nargs*[None,]
+            self.init_fxn(cfg,*args)
+        else:
+            self.init_fxn(cfg)
 
     def optional_module(self,cfg,module_field):
         mname = self.optional(cfg,module_field,None)

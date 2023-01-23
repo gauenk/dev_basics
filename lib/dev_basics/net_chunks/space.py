@@ -3,29 +3,41 @@
 import torch as th
 from .shared import get_chunks
 from easydict import EasyDict as edict
+from ..common import _vprint
+from functools import partial
 
 # -- configs --
-from functools import partial
-from ..common import extract_pairs,_vprint
-
+from dev_basics.configs import ExtractConfig
+econfig = ExtractConfig(__file__,1)
+extract_space_config = econfig.extract_config
 
 #
 # -- api --
 #
 
 # -- config --
-def extract_space_config(_cfg,optional):
+def space_pairs():
     pairs = {"spatial_chunk_size":0,
              "spatial_chunk_overlap":0,
              "spatial_chunk_verbose":False}
-    return extract_pairs(pairs,_cfg,optional)
+    return pairs
 
-# -- wrapper --
+# -- exposed --
+@econfig.set_init
 def space_chunks(cfg,in_fwd):
+
+    # -- extract --
+    econfig.set_cfg(cfg)
+    cfg = econfig({"space":space_pairs()}).space
+    if econfig.is_init: return
+
+    # -- unpack --
     size = cfg.spatial_chunk_size
     overlap = cfg.spatial_chunk_overlap
     verbose = cfg.spatial_chunk_verbose
     out_fwd = in_fwd
+
+    # -- run --
     if not(size is None) and not(size == "none") and not(size <= 0):
         out_fwd = lambda vid,flows: run_spatial_chunks(in_fwd,size,overlap,vid,
                                                        flows=flows,verbose=verbose)

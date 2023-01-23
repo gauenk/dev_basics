@@ -6,12 +6,9 @@ from .time import time_chunks,extract_time_config
 from .channel import channel_chunks,extract_channel_config
 
 # -- config --
-from functools import partial
-from ..common import optional as _optional
-from ..common import optional_fields,extract_config
-_fields = []
-optional_full = partial(optional_fields,_fields)
-extract_chunks_config = partial(extract_config,_fields)
+from dev_basics.configs import ExtractConfig
+econfig = ExtractConfig(__file__,1)
+extract_chunks_config = econfig.extract_config
 
 #
 # -- api --
@@ -23,24 +20,19 @@ def wrap(cfg,model):
     model.forward = chunk(cfg,model.forward)
 
 # -- main chunking --
+@econfig.set_init
 def chunk(cfg,model):
 
-    # -- allows for all keys to be aggregated at init --
-    init = _optional(cfg,'__init',False) # purposefully weird key
-    optional = partial(optional_full,init)
-
     # -- unpack configs --
-    channel_cfg = extract_channel_config(cfg,optional)
-    space_cfg = extract_space_config(cfg,optional)
-    time_cfg = extract_time_config(cfg,optional)
-    if init: return
+    econfig.set_cfg(cfg)
+    cfgs = econfig({"channel":extract_channel_config(cfg),
+                    "space":extract_space_config(cfg),
+                    "time":extract_time_config(cfg)})
+    if econfig.is_init: return
 
     # -- chunking --
     model_fwd = lambda vid,flows: model(vid,flows=flows)
-    model_fwd = channel_chunks(channel_cfg,model_fwd)
-    model_fwd = space_chunks(space_cfg,model_fwd)
-    model_fwd = time_chunks(time_cfg,model_fwd)
+    model_fwd = channel_chunks(cfgs.channel,model_fwd)
+    model_fwd = space_chunks(cfgs.space,model_fwd)
+    model_fwd = time_chunks(cfgs.time,model_fwd)
     return model_fwd
-
-# -- run to populate "_fields" --
-chunk(edict({"__init":True}),None)

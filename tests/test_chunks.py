@@ -29,6 +29,13 @@ def pytest_generate_tests(metafunc):
                    "temporal_chunk_overlap":[0,0.3],
                    "channel_chunk_size":[0,3,9],
                    "channel_chunk_overlap":[0,0.5]}
+    # vshape_list = {"T":[6],"C":[3],"H":[32],"W":[64]}
+    # chunk_list = {"spatial_chunk_size":[64],
+    #                "spatial_chunk_overlap":[0.25],
+    #                "temporal_chunk_size":[4],
+    #                "temporal_chunk_overlap":[0.3],
+    #                "channel_chunk_size":[9],
+    #                "channel_chunk_overlap":[0]}
     test_list = vshape_list | chunk_list
     for key,val in test_list.items():
         if key in metafunc.fixturenames:

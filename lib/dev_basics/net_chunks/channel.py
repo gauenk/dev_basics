@@ -3,27 +3,40 @@
 import torch as th
 from easydict import EasyDict as edict
 from .shared import get_chunks,expand_match
+from ..common import _vprint
+from functools import partial
 
 # -- configs --
-from functools import partial
-from ..common import extract_pairs,_vprint
+from dev_basics.configs import ExtractConfig
+econfig = ExtractConfig(__file__,1)
+extract_channel_config = econfig.extract_config
 
 #
 # -- api --
 #
 
 # -- config --
-def extract_channel_config(_cfg,optional):
+def channel_pairs():
     pairs = {"channel_chunk_size":0,
              "channel_chunk_overlap":0,
              "channel_chunk_verbose":False}
-    return extract_pairs(pairs,_cfg,optional)
+    return pairs
 
 # -- wrapper --
+@econfig.set_init
 def channel_chunks(cfg,in_fwd):
+
+    # -- extract --
+    econfig.set_cfg(cfg)
+    cfg = econfig({"channel":channel_pairs()}).channel
+    if econfig.is_init: return
+
+    # -- unpack --
     size = cfg.channel_chunk_size
     overlap = cfg.channel_chunk_overlap
     verbose = cfg.channel_chunk_verbose
+
+    # -- run --
     out_fwd = in_fwd
     if not(size is None) and not(size == "none") and not(size <= 0):
         out_fwd = lambda vid,flows: run_channel_chunks(in_fwd,size,overlap,vid,
