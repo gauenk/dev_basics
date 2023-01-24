@@ -57,21 +57,31 @@ class ExtractConfig():
         self.optional = partial(optional_fields,self.fields,self.pairs,self.is_init)
 
     def extract_config(self,_cfg,fill_defaults=True):
+        """
+
+        Trigger calling the init function to fill default values.
+
+        Allow input _cfg to dynamically set subsequent configs.
+
+        """
         self.run_init(edict({self.init_key:True} | _cfg))
         cfg = edict(extract_config(self.fields,_cfg))
         if fill_defaults:
             cfg = extract_pairs(self.pairs,cfg,_optional)
         return cfg
 
-    def __call__(self,dicts_of_pairs):
-        return self.extract(dicts_of_pairs)
+    def extract_pairs(self,pairs,_cfg):
+        return extract_pairs(pairs,_cfg,self.optional)
 
-    def extract(self,dicts_of_pairs):
+    def extract_set(self,dicts_of_pairs):
         cfgs = edict()
         for cfg_name,pairs in dicts_of_pairs.items():
             cfg = extract_pairs(pairs,self.cfg,self.optional)
             cfgs[cfg_name] = cfg
         return cfgs
+
+    def __call__(self,dicts_of_pairs):
+        return self.extract_set(dicts_of_pairs)
 
     def cfgs_to_lists(self,cfgs,keys,fixed_len):
         for key in keys:
