@@ -101,6 +101,15 @@ class ExpTimerList(ExpTimer):
         else:
             self.times.append([exec_time])
 
+    def update_times(self,timer):
+        # print(timer.names)
+        if not(self.use_timer): return
+        for key in timer.names:
+            if key in self.times.names:
+                self.times[key].append(timer[key])
+            else:
+                self.times[key] = [timer[key]]
+
     def __str__(self):
         msg = "--- Exp Times ---"
         for k,v in self.items():

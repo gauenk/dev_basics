@@ -52,3 +52,25 @@ def read_yaml(fn):
     with open(fn,"r") as stream:
         data = yaml.safe_load(stream)
     return data
+
+# -- used for adaptation --
+def get_region_gt(vshape):
+
+    t,c,h,w = vshape
+    hsize = min(h//4,128)
+    wsize = min(w//4,128)
+    tsize = min(t//4,5)
+
+    t_start = max(t//2 - tsize//2,0)
+    t_end = min(t_start + tsize,t)
+    if t == 3: t_start = 0
+
+    h_start = max(h//2 - hsize//2,0)
+    h_end = min(h_start + hsize,h)
+
+    w_start = max(w//2 - wsize//2,0)
+    w_end = min(w_start + wsize,w)
+
+    region_gt = [t_start,t_end,h_start,w_start,h_end,w_end]
+    return region_gt
+
