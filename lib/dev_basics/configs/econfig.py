@@ -68,6 +68,9 @@ class ExtractConfig():
         cfg = edict(extract_config(self.fields,_cfg))
         if fill_defaults:
             cfg = extract_pairs(self.pairs,cfg,_optional)
+        # -- idk why it appears --
+        if self.init_key in cfg:
+            del cfg[self.init_key]
         return cfg
 
     def extract_pairs(self,pairs,_cfg):
@@ -86,6 +89,9 @@ class ExtractConfig():
     def cfgs_to_lists(self,cfgs,keys,fixed_len):
         for key in keys:
             cfgs[key] = cfg2lists(cfgs[key],fixed_len)
+
+    def cfgs2lists(self,cfg,fixed_len):
+        return cfg2lists(cfg,fixed_len)
 
     def set_init(self,fxn):
         self.init_fxn = fxn

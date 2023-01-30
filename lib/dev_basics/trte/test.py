@@ -38,7 +38,8 @@ def test_pairs():
              "saved_dir":"./output/saved_examples/","uuid":"uuid_def",
              "flow_sigma":-1,"internal_adapt_nsteps":0,
              "internal_adapt_nepochs":0,"nframes":0,
-             "save_deno":True,"python_module":"dev_basics.trte.id_model"}
+             "save_deno":True,"python_module":"dev_basics.trte.id_model",
+             "bench_bwd":False}
     return pairs
 
 @econfig.set_init
@@ -66,23 +67,22 @@ def run(cfg):
     results = edict()
     results.psnrs = []
     results.ssims = []
+    results.strred = []
     results.noisy_psnrs = []
     results.deno_fns = []
     results.vid_frames = []
     results.vid_name = []
-    results.timer_flow = []
-    results.timer_deno = []
-    results.timer_adapt = []
-    results.timer_attn = []
-    results.timer_extract = []
-    results.timer_search = []
-    results.timer_agg = []
-    results.timer_fold = []
-    results.deno_mem_res = []
-    results.deno_mem_alloc = []
-    results.adapt_mem_res = []
-    results.adapt_mem_alloc = []
-    results.strred = []
+
+    # -- init keyword fields --
+    time_fields = ["flow","deno","attn","extract","search",
+                   "agg","fold","fwd_grad","bwd"]
+    for field in time_fields:
+        results["timer_%s"%field] = []
+    mem_fields = ["deno","adapt","fwd_grad","bwd"]
+    for field in mem_fields:
+        results["%s_mem_res"%field] = []
+        results["%s_mem_alloc"%field] = []
+
 
     # -- load model --
     model = module.load_model(model_cfg)
@@ -183,15 +183,17 @@ def run(cfg):
         else:
             deno_fns = ["" for _ in range(deno.shape[0])]
 
-        # -- psnr --
+        # -- deno quality metrics --
         noisy_psnrs = compute_psnrs(noisy,clean,div=imax)
         psnrs = compute_psnrs(clean,deno,div=imax)
         ssims = compute_ssims(clean,deno,div=imax)
         strred = compute_strred(clean,deno,div=imax)
-        print(psnrs,np.mean(psnrs),strred)
+        print(psnrs,np.mean(psnrs),np.mean(ssims),strred)
 
         # -- measure bwd info --
-        measure_bwd(model,deno,clean,timer,memer)
+        if tcfg.bench_bwd:
+            measure_bwd(model,fwd_fxn,flows,noisy/imax,
+                        clean/imax,timer,memer)
 
         # -- append results --
         results.psnrs.append(psnrs)
@@ -222,5 +224,23 @@ def run(cfg):
     return results
 
 
-def measure_bwd(model,deno,clean,timer,memer):
-    pass
+def measure_bwd(model,fwd_fxn,flows,noisy,clean,timer,memer):
+
+    # -- train mode --
+    model.train()
+
+    # -- forward pass again --
+    with MemIt(memer,"fwd_grad"):
+        with TimeIt(timer,"fwd_grad"):
+            deno = fwd_fxn(noisy,flows)
+    if hasattr(model,'reset_times'):
+        model.reset_times()
+
+    # -- backward pass! --
+    with MemIt(memer,"bwd"):
+        with TimeIt(timer,"bwd"):
+            loss = th.mean((deno - clean)**2)
+            loss.backward()
+
+    # -- test mode again --
+    model.eval()
