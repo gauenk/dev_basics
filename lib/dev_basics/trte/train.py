@@ -102,11 +102,11 @@ def run(cfg):
     init_paths(log_dir,pik_dir,chkpt_dir)
 
     # -- init validation performance --
-    # outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
-    # init_val_results,init_val_res = outs
-    init_val_results,init_val_res_fn = {"init_val_te":-1},""
-    timer.start("init_val_te")
-    timer.stop("init_val_te")
+    outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
+    init_val_results,init_val_res = outs
+    # timer.start("init_val_te")
+    # init_val_results,init_val_res_fn = {"init_val_te":-1},""
+    # timer.stop("init_val_te")
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     #
@@ -238,9 +238,9 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
                          callbacks=[val_report],logger=logger)
 
     # -- run --
-    timer.start(name)
+    timer.sync_start(name)
     trainer.test(model, loaders[dset])
-    timer.stop(name)
+    timer.sync_stop(name)
 
     # -- unpack results --
     results = val_report.metrics
