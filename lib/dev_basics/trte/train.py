@@ -103,7 +103,7 @@ def run(cfg):
 
     # -- init validation performance --
     outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
-    init_val_results,init_val_res = outs
+    init_val_results,init_val_res_fn = outs
     # timer.start("init_val_te")
     # init_val_results,init_val_res_fn = {"init_val_te":-1},""
     # timer.stop("init_val_te")
