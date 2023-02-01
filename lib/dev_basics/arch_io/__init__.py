@@ -26,14 +26,44 @@ def load_checkpoint(model, path, root, wtype="git", mod=None):
     else:
         raise ValueError(f"Uknown checkpoint weight type [{wtype}]")
 
+# def resolve_path(path,root):
+#     if file_exists(path):
+#         path_ = Path(root) / Path(path)
+#         path = resolve_cycle(original_path)
+#         # if not(path_.exists()):
+#         #     path_ = Path(root) / "output/checkpoints/" / Path(path)
+#         # path = path_
+#     assert Path(path).exists()
+#     return str(path)
+
 def resolve_path(path,root):
-    if not Path(path).exists():
-        path_ = Path(root) / Path(path)
-        if not(path_.exists()):
-            path_ = Path(root) / "output/checkpoints/" / Path(path)
-        path = path_
-    assert Path(path).exists()
-    return str(path)
+
+    # -- pathlib paths --
+    path_s = str(path)
+    path = Path(path)
+    root = Path(root)
+
+    # -- 0.) check input --
+    v0 = Path(root) / Path(path)
+    exists = file_exists(v0)
+    if exists: return v0
+
+    # -- 1.) check "output/checkpoints/" --
+    v1 = Path(root) / "output/checkpoints/" / Path(path)
+    exists = file_exists(v1)
+    if exists: return v1
+
+    # -- 2.) check "_uuid_here-epoch..." --
+    uuid = path_s[:path_s.find("-epoch")]
+    v2 = Path(root) / uuid / Path(path)
+    exists = file_exists(v2)
+    if exists: return v2
+
+    # -- error out --
+    raise ValueError("Uknown checkpoint path. Failed to load checkpoint.")
+
+def file_exists(path):
+    return path.exists() and path.is_file()
 
 def load_checkpoint_lit(model,path):
     # -- filename --
