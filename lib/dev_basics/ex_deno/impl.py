@@ -132,6 +132,7 @@ def save_video_v1(root,vids,metrics):
 
     # -- merge and save vid --
     vid = vid_merge(*vids)
+    print("vid.shape: ",vid.shape)
     vid_io.save_video(vid,root,"frame")
 
     # -- save metrics --
@@ -202,8 +203,8 @@ def save_example(df_full,example,save_args,labels):
     noisy,clean = load_pair(example,example.data_hub_crop)
     vids['Noisy'] = noisy
     vids['Clean'] = clean
-    metrics['Noisy'] = compute_metrics(clean[:2],noisy[:2])
-    metrics['Clean'] = compute_metrics(clean[:2],clean[:2]+.1)
+    metrics['Noisy'] = compute_metrics(clean,noisy)
+    metrics['Clean'] = compute_metrics(clean,clean+.1)
 
     # -- order elements --
     order = save_args.order

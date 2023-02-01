@@ -182,7 +182,7 @@ def run(cfg):
         # -- save example --
         out_dir = Path(tcfg.saved_dir) / tcfg.arch_name / str(tcfg.uuid)
         if tcfg.save_deno:
-            print("Saving to %s" % out_dir)
+            print("Saving Denoised Output [%s]" % out_dir)
             deno_fns = vid_io.save_video(deno,out_dir,"deno")
         else:
             deno_fns = ["" for _ in range(deno.shape[0])]
