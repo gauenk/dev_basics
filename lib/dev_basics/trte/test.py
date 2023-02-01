@@ -84,6 +84,9 @@ def run(cfg):
         results["%s_mem_alloc"%field] = []
 
 
+    # -- burn_in once --
+    burn_in = tcfg.burn_in
+
     # -- load model --
     model = module.load_model(model_cfg)
 
@@ -136,13 +139,14 @@ def run(cfg):
         chunk_fwd = fwd_fxn
 
         # -- run once for setup gpu --
-        if tcfg.burn_in:
+        if burn_in:
             with th.no_grad():
                 noisy_a = noisy[[0],...,:128,:128].contiguous()
                 flows_a = flow.orun(noisy_a,False)
                 fwd_fxn(noisy_a/imax,flows_a)
             if hasattr(model,'reset_times'):
                 model.reset_times()
+        burn_in = False # only run first iteration.
 
         # -- internal adaptation --
         adapt_psnrs = [0.]
