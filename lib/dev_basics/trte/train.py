@@ -123,6 +123,7 @@ def run(cfg):
     # -- pytorch_lightning training --
     trainer,chkpt_callback = create_trainer(cfgs,log_dir,chkpt_dir)
     ckpt_path = get_checkpoint(chkpt_dir,cfgs.tr.uuid,cfgs.tr.nepochs)
+    print("Checkpoint Path: %s" % str(ckpt_path))
     timer.start("train")
     trainer.fit(model, loaders.tr, loaders.val, ckpt_path=ckpt_path)
     timer.stop("train")
@@ -180,11 +181,10 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
     checkpoint_dir = Path(checkpoint_dir)
     if not checkpoint_dir.exists():
         return ""
-    prev_ckpt = ""
+    chosen_ckpt = ""
     for epoch in range(nepochs):
         ckpt_fn = checkpoint_dir / ("%s-epoch=%02d.ckpt" % (uuid,epoch))
-        if ckpt_fn.exists(): prev_ckpt = ckpt_fn
-        else: break
+        if ckpt_fn.exists(): chosen_ckpt = ckpt_fn
     assert ((prev_ckpt == "") or prev_ckpt.exists())
     if prev_ckpt != "":
         print("Resuming training from {%s}" % (str(prev_ckpt)))

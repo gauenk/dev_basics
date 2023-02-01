@@ -2,6 +2,8 @@
 
 Relaunch a process every X minutes
 
+timed_launch <my command here>
+
 """
 
 import tqdm
