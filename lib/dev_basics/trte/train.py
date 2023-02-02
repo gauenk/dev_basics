@@ -60,9 +60,9 @@ def train_pairs():
     return pairs
 
 def overwrite_nepochs(cfg,nepochs):
-    if nepoch is None: return
+    if nepochs is None: return
     print("Manually overwriting nepoch from %d to %d" % (cfg.nepochs,nepochs))
-    cfg.nepochs = nepoch
+    cfg.nepochs = nepochs
 
 @econfig.set_init
 def run(cfg,nepochs=None):
