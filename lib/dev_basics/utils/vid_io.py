@@ -8,17 +8,20 @@ from PIL import Image
 from pathlib import Path
 
 def save_burst(burst,root,name):
-    save_video(burst,root,name)
+    return save_video(burst,root,name)
 
 def save_video(vid,root,name):
     if vid.ndim == 4:
-        _save_video(vid,root,name)
+        return _save_video(vid,root,name)
     elif vid.ndim == 5 and vid.shape[0] == 1:
-        _save_video(vid[0],root,name)
+        return _save_video(vid[0],root,name)
     elif vid.ndim == 5 and vid.shape[0] > 1:
+        fns = []
         B = vid.shape[0]
         for b in range(B):
-            _save_video(vid[b],root,"%s_%02d" % (name,b))
+            fns_b = _save_video(vid[b],root,"%s_%02d" % (name,b))
+            fns.extend(fns_b)
+        return fns
     else:
         raise ValueError("Uknown number of dims [%d]" % vid.ndim)
 

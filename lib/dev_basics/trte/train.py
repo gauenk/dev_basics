@@ -59,6 +59,10 @@ def train_pairs():
     }
     return pairs
 
+def overwrite_nepochs(cfg,nepochs):
+    print("Manually overwriting nepoch from %d to %d" % (cfg.nepochs,nepochs))
+    cfg.nepochs = nepoch
+
 @econfig.set_init
 def run(cfg):
 
@@ -81,6 +85,7 @@ def run(cfg):
                                 "lit":lit_extract_config(cfg),
                                 "sim":sim_extract_config(cfg)})
     if econfig.is_init: return
+    # overwrite_nepochs(cfgs.tr,60)
 
     # -- init model/simulator/lightning --
     net = net_module.load_model(cfgs.net)

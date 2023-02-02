@@ -60,8 +60,8 @@ def compute_strred(clean,deno,div=255):
     deno = deno.detach().cpu().numpy()
 
     # -- reshape --
-    clean = rearrange(clean,'t c h w -> t h w c')/div
-    deno = rearrange(deno,'t c h w -> t h w c')/div
+    clean = rearrange(clean,'t c h w -> t h w c')/float(div)
+    deno = rearrange(deno,'t c h w -> t h w c')/float(div)
 
     # -- bw --
     if clean.shape[-1] == 3:
@@ -69,7 +69,8 @@ def compute_strred(clean,deno,div=255):
         deno = rgb2gray(deno,channel_axis=-1)
 
     # -- compute --
-    outs = comp_strred(clean,deno)
+    with np.errstate(invalid='ignore'):
+        outs = comp_strred(clean,deno)
     strred = outs[1] # get float
     return strred
 
