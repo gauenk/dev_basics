@@ -185,10 +185,10 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
     for epoch in range(nepochs):
         ckpt_fn = checkpoint_dir / ("%s-epoch=%02d.ckpt" % (uuid,epoch))
         if ckpt_fn.exists(): chosen_ckpt = ckpt_fn
-    assert ((prev_ckpt == "") or prev_ckpt.exists())
-    if prev_ckpt != "":
-        print("Resuming training from {%s}" % (str(prev_ckpt)))
-    return str(prev_ckpt)
+    assert ((chosen_ckpt == "") or chosen_ckpt.exists())
+    if chosen_ckpt != "":
+        print("Resuming training from {%s}" % (str(chosen_ckpt)))
+    return str(chosen_ckpt)
 
 
 def create_trainer(cfgs,log_dir,chkpt_dir):
