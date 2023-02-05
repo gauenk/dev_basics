@@ -66,7 +66,8 @@ def resolve_path(path,root):
     if exists: return v3
 
     # -- error out --
-    raise ValueError("Uknown checkpoint path. Failed to load checkpoint.")
+    msg = "Uknown checkpoint path. Failed to load checkpoint.\n%s\n%s" % (root,path)
+    raise ValueError(msg)
 
 def file_exists(path):
     return path.exists() and path.is_file()

@@ -74,3 +74,10 @@ def get_region_gt(vshape):
     region_gt = [t_start,t_end,h_start,w_start,h_end,w_end]
     return region_gt
 
+def nice_pretrained_path(pandas_series):
+    split = pandas_series.str.split("-epoch=",expand=True)
+    uuids = split[0]
+    uuids_abbr = uuids.str.slice(0,4)
+    epoch_num = split[1].str.slice(0,2)
+    abbr = uuids_abbr + "-" + epoch_num
+    return abbr

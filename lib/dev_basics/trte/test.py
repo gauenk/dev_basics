@@ -192,7 +192,7 @@ def run(cfg):
         psnrs = compute_psnrs(clean,deno,div=imax)
         ssims = compute_ssims(clean,deno,div=imax)
         strred = compute_strred(clean,deno,div=imax)
-        print(psnrs,np.mean(psnrs),np.mean(ssims),strred)
+        print(psnrs,np.mean(psnrs),np.mean(ssims),np.mean(strred))
 
         # -- measure bwd info --
         if tcfg.bench_bwd:
