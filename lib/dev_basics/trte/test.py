@@ -52,10 +52,12 @@ def run(cfg):
     module = econfig.required_module(tcfg,'python_module')
     model_cfg = epairs(module.extract_model_config(tcfg),cfg)
     if econfig.is_init: return
+    if tcfg.frame_end == -1: tcfg.frame_end = tcfg.frame_start + cfg.nframes - 1
 
     # -- clear --
     th.cuda.empty_cache()
     th.cuda.synchronize()
+
 
     # -- set device --
     th.cuda.set_device(int(tcfg.device.split(":")[1]))
@@ -93,6 +95,7 @@ def run(cfg):
     # -- data --
     imax = 255.
     data,loaders = data_hub.sets.load(cfg)
+    print(list(data.keys()),tcfg.frame_start,tcfg.frame_end)
     indices = data_hub.filter_subseq(data[cfg.dset],cfg.vid_name,
                                      tcfg.frame_start,tcfg.frame_end)
     print(indices)
