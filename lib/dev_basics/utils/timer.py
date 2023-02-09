@@ -147,7 +147,7 @@ class TimeIt():
 
     def __enter__(self):
         """Start a new timer as a context manager"""
-        self.timer.start(self.name)
+        self.timer.sync_start(self.name)
         return self
 
     def __exit__(self, *exc_info):

@@ -56,6 +56,7 @@ def train_pairs():
              "swa_epoch_start":0.8,
              "nsamples_at_testing":1,
              "isize":"128_128",
+             "subdir":"",
     }
     return pairs
 
@@ -102,9 +103,10 @@ def run(cfg,nepochs=None):
 
     # -- paths --
     root = Path(cfgs.tr.root)
-    log_dir = root / "output/train/logs/" / str(cfgs.tr.uuid)
-    pik_dir = root / "output/train/pickles" / str(cfgs.tr.uuid)
-    chkpt_dir = root / "output/train/checkpoints" / str(cfgs.tr.uuid)
+    subdir = cfgs.tr.subdir
+    log_dir = root / "output/train/logs/" / subdir / str(cfgs.tr.uuid)
+    pik_dir = root / "output/train/pickles" / subdir / str(cfgs.tr.uuid)
+    chkpt_dir = root / "output/train/checkpoints" / subdir / str(cfgs.tr.uuid)
     init_paths(log_dir,pik_dir,chkpt_dir)
 
     # -- init validation performance --
