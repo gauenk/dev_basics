@@ -102,11 +102,11 @@ def run(cfg,nepochs=None):
     timer = ExpTimer()
 
     # -- paths --
-    root = Path(cfgs.tr.root)
     subdir = cfgs.tr.subdir
-    log_dir = root / "output/train/logs/" / subdir / str(cfgs.tr.uuid)
-    pik_dir = root / "output/train/pickles" / subdir / str(cfgs.tr.uuid)
-    chkpt_dir = root / "output/train/checkpoints" / subdir / str(cfgs.tr.uuid)
+    root = Path(cfgs.tr.root) / "output" / "train" / subdir
+    log_dir = root / "logs" / str(cfgs.tr.uuid)
+    pik_dir = root / "pickles" / str(cfgs.tr.uuid)
+    chkpt_dir = root / "checkpoints" / str(cfgs.tr.uuid)
     init_paths(log_dir,pik_dir,chkpt_dir)
 
     # -- init validation performance --
