@@ -65,8 +65,13 @@ def overwrite_nepochs(cfg,nepochs):
     print("Manually overwriting nepoch from %d to %d" % (cfg.nepochs,nepochs))
     cfg.nepochs = nepochs
 
+def overwrite_field(name,cfg,value):
+    if value is None: return
+    print("Manually overwriting %s from %s to %s" % (name,str(cfg[name]),str(value)))
+    cfg[name] = value
+
 @econfig.set_init
-def run(cfg,nepochs=None):
+def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
 
     # -=-=-=-=-=-=-=-=-
     #
@@ -87,7 +92,11 @@ def run(cfg,nepochs=None):
                                 "lit":lit_extract_config(cfg),
                                 "sim":sim_extract_config(cfg)})
     if econfig.is_init: return
-    overwrite_nepochs(cfgs.tr,nepochs)
+    # overwrite_nepochs(cfgs.tr,nepochs)
+    overwrite_field("nepochs",cfgs.tr,nepochs)
+    overwrite_field("nepochs",cfgs.lit,nepochs)
+    overwrite_field("flow_from_end",cfgs.lit,flow_from_end)
+    overwrite_field("flow_epoch",cfgs.lit,flow_epoch)
 
     # -- init model/simulator/lightning --
     net = net_module.load_model(cfgs.net)
@@ -108,6 +117,9 @@ def run(cfg,nepochs=None):
     pik_dir = root / "pickles" / str(cfgs.tr.uuid)
     chkpt_dir = root / "checkpoints" / str(cfgs.tr.uuid)
     init_paths(log_dir,pik_dir,chkpt_dir)
+
+    # -- copy previous step checkpoint --
+    # input: previous step's uuid
 
     # -- init validation performance --
     outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
@@ -202,11 +214,11 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
 def create_trainer(cfgs,log_dir,chkpt_dir):
     logger = CSVLogger(log_dir,name="train",flush_logs_every_n_steps=1)
     ckpt_fn_val = cfgs.tr.uuid + "-{epoch:02d}-{val_loss:2.2e}"
-    checkpoint_callback = ModelCheckpoint(monitor="val_loss",save_top_k=10,
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss",save_top_k=11,
                                           mode="min",dirpath=chkpt_dir,
                                           filename=ckpt_fn_val)
     ckpt_fn_epoch = cfgs.tr.uuid + "-{epoch:02d}"
-    cc_recent = ModelCheckpoint(monitor="epoch",save_top_k=10,mode="max",
+    cc_recent = ModelCheckpoint(monitor="epoch",save_top_k=11,mode="max",
                                 dirpath=chkpt_dir,filename=ckpt_fn_epoch)
     callbacks = [checkpoint_callback,cc_recent]
     if cfgs.tr.swa:

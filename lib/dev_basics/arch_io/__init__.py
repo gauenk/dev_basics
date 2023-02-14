@@ -59,11 +59,17 @@ def resolve_path(path,root):
     exists = file_exists(v2)
     if exists: return v2
 
-    # -- 2.) check "_uuid_here-epoch..." --
+    # -- 3.) check "_uuid_here-epoch..." --
     uuid = path_s[:path_s.find("-epoch")]
     v3 = Path(root) / "output/train/checkpoints" / uuid / Path(path)
     exists = file_exists(v3)
     if exists: return v3
+
+    # -- 4.) check "_uuid_here-epoch..." --
+    uuid = path_s[:path_s.find("-epoch")]
+    v4 = Path(root) / "checkpoints" / uuid / Path(path)
+    exists = file_exists(v4)
+    if exists: return v4
 
     # -- error out --
     msg = "Uknown checkpoint path. Failed to load checkpoint.\n%s\n%s" % (root,path)

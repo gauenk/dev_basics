@@ -162,6 +162,8 @@ def run_cv2(vid_in,sigma,fxn_s,dev_s,rescale=True):
     return flows
 
 def est_sigma(vid):
+    if vid.ndim == 5:
+        vid = vid[0]
     if vid.shape[1] == 3:
         vid = vid.cpu().clone()
         color.rgb2yuv(vid)
