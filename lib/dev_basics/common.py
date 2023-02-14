@@ -21,20 +21,20 @@ def _vprint(verbose,*args,**kwargs):
 
 # -- auto populate fields to extract config --
 def optional_fields(_fields,init,pydict,field,default):
-    print("move to dev_basics.configs")
+    # print("move to dev_basics.configs")
     if not(field in _fields) and init:
         _fields.append(field)
     return optional(pydict,field,default)
 
 def extract_pairs(pairs,_cfg,optional):
-    print("move to dev_basics.configs")
+    # print("move to dev_basics.configs")
     cfg = edict()
     for key,val in pairs.items():
         cfg[key] = optional(_cfg,key,val)
     return cfg
 
 def extract_config(_fields,_cfg):
-    print("move to dev_basics.configs")
+    # print("move to dev_basics.configs")
     cfg = {}
     for field in _fields:
         if field in _cfg:
@@ -42,7 +42,7 @@ def extract_config(_fields,_cfg):
     return edict(cfg)
 
 def set_defaults(defs,pairs,overwrite=True):
-    print("move to dev_basics.configs")
+    # print("move to dev_basics.configs")
     for key,val in defs.items():
         if overwrite:
             pairs[key] = val
@@ -50,7 +50,7 @@ def set_defaults(defs,pairs,overwrite=True):
             pairs[key] = val
 
 def cfg2lists(cfg,L):
-    print("move to dev_basics.configs")
+    # print("move to dev_basics.configs")
     # converts a edict to a list of edicts
     cfgs = []
     keys = list(cfg.keys())
