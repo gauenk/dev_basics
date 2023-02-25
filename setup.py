@@ -32,6 +32,7 @@ setup(
     entry_points = {
         'console_scripts': ['timed_launch=dev_basics.timed_launch:main',
                             'named_launch=dev_basics.named_launch:main',
+                            'sbatch_cmd=dev_basics.sbatch_cmd:main',
                         ],
     }
 )
