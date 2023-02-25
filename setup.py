@@ -26,10 +26,12 @@ setup(
     author_email='gauenk@purdue.edu',
     license='MIT',
     keywords='neural network',
-    install_requires=['numpy','torch'],
+    install_requires=[],
     package_dir={"": "lib"},
     packages=find_packages("lib"),
     entry_points = {
-        'console_scripts': ['timed_launch=dev_basics.timed_launch:main'],
+        'console_scripts': ['timed_launch=dev_basics.timed_launch:main',
+                            'named_launch=dev_basics.named_launch:main',
+                        ],
     }
 )

@@ -70,6 +70,7 @@ def resolve_path(path,root):
     v4 = Path(root) / "checkpoints" / uuid / Path(path)
     exists = file_exists(v4)
     if exists: return v4
+    print(v4)
 
     # -- error out --
     msg = "Uknown checkpoint path. Failed to load checkpoint.\n%s\n%s" % (root,path)
