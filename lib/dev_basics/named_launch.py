@@ -8,10 +8,12 @@ named_launch <job_id> <job_uuid> <njobs> <njobs_per_proc> <user_id>
 
 """
 
+import os
 import tqdm
 import time
 import argparse
 import subprocess
+import datetime
 from pathlib import Path
 from easydict import EasyDict as edict
 
@@ -31,42 +33,68 @@ def parse():
                         help="The number of jobs per process.")
     parser.add_argument("user_id",type=str,default="gauenk",
                         help="The account name for squeue")
-    parser.add_argument('--interval',type=int,default=1,
-                        help="Wait 1 minute. Then check and relaunch.")
+    parser.add_argument('--interval',type=float,default=1.,
+                        help="Wait [interval] minutes. Then check for relaunching.")
+    parser.add_argument('--min_time',type=int,default=2,
+                        help="Minimum wait time in minutes")
     args = parser.parse_args()
     return edict(vars(args))
 
 def main():
 
     # -- init --
+    print("PID: ",os.getpid())
     args = parse()
 
     # -- setup paths --
     launch_files = get_launch_files(args)
     job_names = get_job_names(args)
+    job_times = {n:timedelta_from_timefield("1:0:0") for n in job_names}
+    min_time = datetime.timedelta(minutes=args.min_time)
+    viewed = {n:False for n in job_names}
 
     # -- check each process --
     while True:
-        running_names = get_running_names(args)
+        running_names,running_times = get_running_info(args)
+        # print(job_times,flush=True)
+        # print(running_times)
         for name,fn in zip(job_names,launch_files):
             if name in running_names:
+                index = running_names.index(name)
+                job_times[name] = running_times[index]
                 continue
+            if job_times[name] <= min_time: # job is complete.
+                if viewed[name] is False:
+                    print("Job name %s is complete." % name,flush=True)
+                    viewed[name] = True
+                continue
+            # if viewed[name] is True: continue # job completed but relaunched?
             print("Relaunching job name %s" % name,flush=True)
             run_launch_file(fn)
+            # set to be marked as complete if it complete before time is updated.
+            job_times[name] = datetime.timedelta(seconds=0)
         sleep_bar(args.interval)
 
-def get_running_names(args):
+def get_running_info(args):
     cmd = ["squeue","-u",args.user_id]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     slurm_info = proc.stdout
     jobs = slurm_info.split("\n")[1:]
-    job_names = []
+    job_names,job_times = [],[]
     for job in jobs:
         job_args = job.split()
         if len(job_args) != 9:
             continue
         job_names.append(job_args[3])
-    return job_names
+        job_times.append(timedelta_from_timefield(job_args[8]))
+    return job_names,job_times
+
+def timedelta_from_timefield(time_str):
+    times = reversed(time_str.split(":"))
+    fields = ["seconds","minutes","hours"]
+    kwargs = {f:int(t) for f,t in zip(fields,times)}
+    dtime = datetime.timedelta(**kwargs)
+    return dtime
 
 def run_launch_file(fn):
     cmd = ["sbatch",fn]
@@ -95,6 +123,6 @@ def get_launch_files(args):
 
 def sleep_bar(nmins):
     # for i in tqdm.tqdm(range(nmins),desc="Minutes until next check."):
-    time.sleep(60*nmins)
+    time.sleep(int(60.*nmins))
     
 
