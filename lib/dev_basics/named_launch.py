@@ -68,7 +68,7 @@ def main():
                     print("Job name %s is complete." % name,flush=True)
                     viewed[name] = True
                 continue
-            # if viewed[name] is True: continue # job completed but relaunched?
+            if viewed[name] is True: continue # job completed but relaunched? idk
             print("Relaunching job name %s" % name,flush=True)
             run_launch_file(fn)
             # set to be marked as complete if it complete before time is updated.
