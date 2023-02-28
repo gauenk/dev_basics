@@ -4,6 +4,7 @@ from . import common
 from . import configs
 from .configs import ExtractConfig
 from .utils import metrics
+from .utils import vid_io
 
 # -- api (1) --
 from . import flow
