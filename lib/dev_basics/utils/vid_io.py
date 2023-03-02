@@ -99,9 +99,23 @@ def read_video(path):
 def read_files(fns):
     vid = []
     for fn in fns:
+        fn = mangle_fn(fn)
         img = np.array(Image.open(fn))
         img = rearrange(img,'h w c -> c h w')
         img = th.from_numpy(img)
         vid.append(img)
     vid = th.stack(vid)
     return vid
+
+def mangle_fn(fn):
+    fn = Path(fn)
+    suffix_l = ["png","jpeg","jpg"]
+    if fn.stem in suffix_l:
+        return str(fn)
+    else:
+        for suffix in suffix_l:
+            fn_s = str(fn) + ".%s" % suffix
+            fn_s = Path(fn_s)
+            if fn_s.exists():
+                return str(fn_s)
+    raise ValueError("Uknown file %s" % fn)

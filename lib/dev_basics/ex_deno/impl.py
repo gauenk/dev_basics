@@ -198,6 +198,7 @@ def save_example(df_full,example,save_args,labels):
     # -- load full denoised result from path --
     vids = run_extraction(df,labels,extract_denos)
     metrics = run_extraction(df,labels,extract_metrics)
+    print(metrics)
 
     # -- get noisy/clean pair --
     noisy,clean = load_pair(example,example.data_hub_crop)

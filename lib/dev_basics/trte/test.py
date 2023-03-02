@@ -58,12 +58,11 @@ def run(cfg):
     th.cuda.empty_cache()
     th.cuda.synchronize()
 
+    # -- set seed --
+    set_seed(tcfg.seed)
 
     # -- set device --
     th.cuda.set_device(int(tcfg.device.split(":")[1]))
-
-    # -- set seed --
-    set_seed(tcfg.seed)
 
     # -- init results --
     results = edict()

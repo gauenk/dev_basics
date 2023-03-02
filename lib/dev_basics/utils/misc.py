@@ -47,6 +47,8 @@ def set_seed(seed):
     random.seed(seed)
     th.manual_seed(seed)
     np.random.seed(seed)
+    # th.random.
+    # th.random.set_rng_state(seed)
 
 def read_yaml(fn):
     with open(fn,"r") as stream:
