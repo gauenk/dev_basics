@@ -80,7 +80,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -=-=-=-=-=-=-=-=-
 
     # -- config --
-    econfig.set_cfg(cfg)
+    econfig.init()
     net_module = econfig.required_module(cfg,"python_module")
     lit_module = net_module.lightning
     sim_module = econfig.optional_module(cfg,"sim_module")

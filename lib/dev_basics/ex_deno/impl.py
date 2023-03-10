@@ -26,6 +26,7 @@ from dev_basics.utils.metrics import compute_psnrs,compute_ssims,compute_strred
 from PIL import Image
 from torchvision.utils import make_grid
 from einops import rearrange
+import torchvision.transforms.functional as F
 
 # -- caching results --
 import cache_io # possibly circular import. yikes! but I like this better.
@@ -34,7 +35,7 @@ import cache_io # possibly circular import. yikes! but I like this better.
 import data_hub # again, possibly circular import. yikes! but I like this better.
 
 def filter_df(df,pydict):
-    fskip = ["regions","data_hub_crop"]
+    fskip = ["regions","data_hub_crop","isize","frame_start","frame_end","nframes"]
     for field,val in pydict.items():
         if field in fskip: continue
         df = df[df[field] == val]
@@ -80,8 +81,11 @@ def load_pair(cfg,region):
     noisy = data[cfg.dset][index]['noisy']
 
     # -- apply optional region --
-    clean = apply_region(region,clean)
-    noisy = apply_region(region,noisy)
+    if region is None:
+        t0,t1 = region.split(",")[:2]
+        t0,t1 = int(t0),int(t1)
+        clean = clean[t0:t1]
+        noisy = noisy[t0:t1]
 
     return noisy,clean
 
@@ -192,13 +196,12 @@ def save_example(df_full,example,save_args,labels):
     df = filter_df(df_full,example)
     if len(df) == 0:
         vname,sigma = example['vid_name'],example['sigma']
-        print("Missing results for expeirment [%s] @ [%s]" % (vname,sigma))
+        print("Missing results for experiment [%s] @ [%s]" % (vname,sigma))
         return [],[vname,sigma]
 
     # -- load full denoised result from path --
     vids = run_extraction(df,labels,extract_denos)
     metrics = run_extraction(df,labels,extract_metrics)
-    print(metrics)
 
     # -- get noisy/clean pair --
     noisy,clean = load_pair(example,example.data_hub_crop)
