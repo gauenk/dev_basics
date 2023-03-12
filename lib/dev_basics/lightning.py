@@ -176,6 +176,12 @@ class LitModel(pl.LightningModule):
             cleans.append(clean_i)
         loss = loss / nbatches
 
+        # -- view params --
+        # loss.backward()
+        # for name, param in self.net.named_parameters():
+        #     if param.grad is None:
+        #         print(name)
+
         # -- append --
         denos = th.stack(denos)
         cleans = th.stack(cleans)

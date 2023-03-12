@@ -4,20 +4,27 @@ from easydict import EasyDict as edict
 from ..common import optional
 
 # -- auto populate fields to extract config --
-def optional_fields(_fields,_pairs,init,pydict,field,default):
-    if not(field in _fields) and init:
-        _fields.append(field)
+def optional_append(_pairs,init,pydict,field,default):
     if not(field in _pairs) and init:
         _pairs[field] = default
     return optional(pydict,field,default)
 
-def extract_pairs(pairs,_cfg,optional):
-    cfg = edict()
+# def extract_pairs(pairs,_cfg,optional,fields=None,copy=False):
+#     if copy: cfg = edict()
+#     else: cfg = _cfg
+#     for field,field_val in pairs.items():
+#         if field in fields: continue
+#         cfg[field] = optional(_cfg,field,field_val)
+#     return cfg
+
+def extract_pairs(_cfg,pairs,optional,new=True):
+    if new: cfg = edict()
+    else: cfg = _cfg
     for key,val in pairs.items():
         cfg[key] = optional(_cfg,key,val)
     return cfg
 
-def extract_config(_fields,_cfg):
+def copy_cfg_fields(_fields,_cfg):
     cfg = {}
     for field in _fields:
         if field in _cfg:
@@ -52,6 +59,14 @@ def cfg2lists(cfg,L):
                 cfg_l[key] = cfg[key]
         cfgs.append(cfg_l)
     return cfgs
+
+def merge_pairs(list_of_pairs):
+    pairs = edict()
+    for pair_i in list_of_pairs:
+        for key,val in pair_i.items():
+            pairs[key] = val
+    return pairs
+
 
 class SpoofModule():
 
