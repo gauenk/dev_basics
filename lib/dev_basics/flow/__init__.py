@@ -31,6 +31,14 @@ from ..utils import color
 from ..utils.misc import rslice as rslice_tensor
 
 def run_zeros(vid,sigma=0.):
+    if vid.ndim == 5:
+        return run_zeros_batch(vid,sigma)
+    elif vid.ndim == 4:
+        return run_zeros_nobatch(vid,sigma)
+    else:
+        raise ValueError("Must be shape 4 or 5.")
+
+def run_zeros_batch(vid,sigma=0.):
     device = vid.device
     b,t,c,h,w = vid.shape
     flows = edict()
@@ -38,7 +46,16 @@ def run_zeros(vid,sigma=0.):
     flows.bflow = th.zeros((b,t,2,h,w),device=device)
     return flows
 
-def orun(noisy,run_bool=True,sigma=None,ftype="cv2"): # optional run
+def run_zeros_nobatch(vid,sigma=0.):
+    device = vid.device
+    t,c,h,w = vid.shape
+    flows = edict()
+    flows.fflow = th.zeros((t,2,h,w),device=device)
+    flows.bflow = th.zeros((t,2,h,w),device=device)
+    return flows
+
+
+def orun(noisy,run_bool=True,sigma=None,ftype="cv2",rescale=True): # optional run
     if run_bool:
         if sigma is None:
             sigma_est = est_sigma(noisy)
@@ -46,7 +63,7 @@ def orun(noisy,run_bool=True,sigma=None,ftype="cv2"): # optional run
             sigma_est = sigma
         if len(noisy.shape) == 4:
             noisy = noisy[None,:]
-        flows = run_batch(noisy,sigma_est,ftype)
+        flows = run_batch(noisy,sigma_est,ftype,rescale=rescale)
     else:
         if len(noisy.shape) == 4:
             noisy = noisy[None,:]
@@ -54,27 +71,36 @@ def orun(noisy,run_bool=True,sigma=None,ftype="cv2"): # optional run
 
     return flows
 
+def run(vid,sigma=None,ftype="cv2",rescale=True):
+    if vid.ndim == 5:
+        return run_batch(vid,sigma,ftype,rescale)
+    elif vid.ndim == 4:
+        return run_nobatch(vid,sigma,ftype,rescale)
+    else:
+        raise ValueError("Must be shape 4 or 5.")
 
-def run_batch(vid,sigma=None,ftype="cv2"):
+def run_batch(vid,sigma=None,ftype="cv2",rescale=True):
     sigma = get_sigma(vid,sigma)
     B = vid.shape[0]
     flows = edict()
     flows.fflow,flows.bflow = [],[]
     for b in range(B):
-        flows_b = run(vid[b],sigma,ftype)
+        flows_b = run_nobatch(vid[b],sigma,ftype,rescale=rescale)
         flows.fflow.append(flows_b.fflow)
         flows.bflow.append(flows_b.bflow)
     flows.fflow = th.stack(flows.fflow)
     flows.bflow = th.stack(flows.bflow)
     return flows
 
-def run(vid_in,sigma=None,ftype="cv2"):
+def run_nobatch(vid_in,sigma=None,ftype="cv2",rescale=True):
     sigma = get_sigma(vid_in,sigma)
     if "cv2" in ftype:
         fxn_s,dev_s = get_fxn_s(ftype)
-        return run_cv2(vid_in,sigma,fxn_s,dev_s)
+        return run_cv2(vid_in,sigma,fxn_s,dev_s,rescale=rescale)
     elif ftype == "svnlb":
-        return run_svnlb(vid_in,sigma)
+        return run_svnlb(vid_in,sigma,rescale=rescale)
+    elif "none" in ftype.lower() or "skip" in ftype.lower():
+        return run_zeros(vid_in)
     else:
         raise ValueError(f"Uknown flow type [{ftype}]")
 
@@ -207,8 +233,8 @@ def get_flow_fxn_gpu(fxn_s):
     elif fxn_s == "tvl1p":
         def wrapper(frame_curr,frame_next):
             args = {"Tau":0.25,"Lambda":0.15,"Theta":0.3,"NumScales":5,
-                    "ScaleStep":0.5,"NumWarps":5,"Epsilon":0.01,
-                    "NumIterations":300}
+                    "ScaleStep":0.5,"NumWarps":5,"Epsilon":0.00001,
+                    "NumIterations":600}
             # args = {"Tau":0.25,"Lambda":0.2,"Theta":0.3,"NumScales":100,
             #         "ScaleStep":1,"NumWarps":5,"Epsilon":0.01,
             #         "NumIterations":300}
