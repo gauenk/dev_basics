@@ -36,7 +36,7 @@ from ..utils.metrics import compute_psnrs,compute_ssims
 # -- extract config --
 from ..configs import ExtractConfig
 econfig = ExtractConfig(__file__)
-extract_config = ExtractConfig.extract_config
+extract_config = econfig.extract_config
 
 def train_pairs():
     pairs = {"num_workers":4,
@@ -80,7 +80,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -=-=-=-=-=-=-=-=-
 
     # -- config --
-    econfig.init()
+    econfig.init(cfg)
     net_module = econfig.required_module(cfg,"python_module")
     lit_module = net_module.lightning
     sim_module = econfig.optional_module(cfg,"sim_module")
@@ -191,7 +191,8 @@ def init_paths(log_dir,pik_dir,chkpt_dir):
     log_subdirs = ["train"]
     for sub in log_subdirs:
         log_subdir = log_dir / sub
-        if not log_subdir.exists(): log_subdir.mkdir()
+        if not log_subdir.exists():
+            log_subdir.mkdir(parents=True)
 
     # -- prepare save directory for pickles --
     if not pik_dir.exists():

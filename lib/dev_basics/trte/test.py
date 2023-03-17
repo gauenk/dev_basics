@@ -46,7 +46,7 @@ def test_pairs():
 def run(cfg):
 
     # -- config --
-    econfig.set_cfg(cfg)
+    econfig.init(cfg)
     epairs = econfig.extract_pairs
     tcfg = epairs(test_pairs(),cfg)
     module = econfig.required_module(tcfg,'python_module')

@@ -63,6 +63,9 @@ class ExtractConfig():
         self.init_fxn = None
         self.is_set = False
 
+    def set_cfg(self,cfg):
+        self.init(cfg)
+
     def init(self,cfg):
         self.is_set = True
         self.cfg = cfg
@@ -162,8 +165,10 @@ class ExtractConfig():
         self.init_fxn = fxn
         return fxn
 
-    def run_init(self,cfg):
-        cfg = edict({self.init_key:True} | dcopy(cfg))
+    def run_init(self,_cfg):
+        cfg = dict(_cfg)
+        cfg.update({self.init_key:True})
+        cfg = edict(cfg)
         if self.nargs > 0:
             args = self.nargs*[None,]
             self.init_fxn(cfg,*args)

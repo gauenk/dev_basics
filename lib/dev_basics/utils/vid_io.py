@@ -53,8 +53,8 @@ def save_image(image,base,itype):
 
 def save_image_np(image,base):
 
-    # -- path -- 
-    path = "%s.np" % str(base)
+    # -- path --
+    path = "%s.npy" % str(base)
 
     # -- to numpy --
     if th.is_tensor(image):
@@ -65,7 +65,7 @@ def save_image_np(image,base):
 
 def save_image_png(image,base):
 
-    # -- path -- 
+    # -- path --
     path = "%s.png" % str(base)
 
     # -- to numpy --
@@ -109,13 +109,14 @@ def read_files(fns):
 
 def mangle_fn(fn):
     fn = Path(fn)
-    suffix_l = ["png","jpeg","jpg"]
-    if fn.stem in suffix_l:
+    suffix_l = [".png",".jpeg",".jpg"]
+    if fn.suffix in suffix_l:
         return str(fn)
     else:
         for suffix in suffix_l:
-            fn_s = str(fn) + ".%s" % suffix
+            fn_s = str(fn) + "%s" % suffix
             fn_s = Path(fn_s)
             if fn_s.exists():
                 return str(fn_s)
-    raise ValueError("Uknown file %s" % fn)
+    raise ValueError("Unknown file %s" % fn)
+
