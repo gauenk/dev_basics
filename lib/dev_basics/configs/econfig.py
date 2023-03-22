@@ -129,9 +129,15 @@ class ExtractConfig():
         return cfg
 
     def extract_dict(self,cfg,extract_dict): # internal api
+        return self.extract_dict(cfg,extract_dict)
+
+    def extract_dict_of_econfigs(self,cfg,extract_dict): # internal api
         cfgs = edict()
         for name,econfig in extract_dict.items():
             cfgs[name] = econfig.extract_config(cfg,new=True)
+            # -- 2.) append to pairs --
+            for key,val in econfig.pairs.items():
+                self.pairs[key] = val
         return cfgs
 
     def extract_list(self,cfg,extract_list): # internal api
@@ -140,19 +146,29 @@ class ExtractConfig():
         # self.pairs = merge_pairs([v.pairs for v in extract_list])
         return cfg
 
-    def extract_pairs(self,_cfg,pairs,new=True): # internal api
-        return extract_pairs(_cfg,pairs,self.optional)
+    def extract_pairs(self,_cfg,pairs,new=True,restrict=False): # internal api
+        return extract_pairs(_cfg,pairs,self.optional,new=new,restrict=restrict)
 
     def extract_set(self,dicts_of_pairs,new=True): # internal api
+        return self.extract_dict_of_pairs(self.cfg,dicts_of_pairs,new=new)
+
+    # internal api
+    def extract_dict_of_pairs(self,cfg,dicts_of_pairs,new=True,restrict=False):
         # raise NotImplemented("Don't use this.")
         cfgs = edict()
         for cfg_name,pairs in dicts_of_pairs.items():
-            cfg = self.extract_pairs(self.cfg,pairs,new=new)
-            cfgs[cfg_name] = cfg
+            _cfg = self.extract_pairs(cfg,pairs,new=new,restrict=restrict)
+            cfgs[cfg_name] = _cfg
         return cfgs
 
     def __call__(self,dicts_of_pairs):
         return self.extract_set(dicts_of_pairs)
+
+    def flatten(self,cfgs):
+        cfg = edict()
+        for cfg_i in cfgs.values():
+            cfg = edict({**cfg,**cfg_i})
+        return cfg
 
     def cfgs_to_lists(self,cfgs,keys,fixed_len):
         for key in keys:

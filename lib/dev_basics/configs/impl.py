@@ -1,5 +1,7 @@
 
 # -- imports --
+import copy
+dcopy = copy.deepcopy
 from easydict import EasyDict as edict
 from ..common import optional
 
@@ -17,8 +19,9 @@ def optional_append(_pairs,init,pydict,field,default):
 #         cfg[field] = optional(_cfg,field,field_val)
 #     return cfg
 
-def extract_pairs(_cfg,pairs,optional,new=True):
-    if new: cfg = edict()
+def extract_pairs(_cfg,pairs,optional,new=True,restrict=False):
+    if restrict: cfg = edict()
+    elif new: cfg = dcopy(_cfg)
     else: cfg = _cfg
     for key,val in pairs.items():
         cfg[key] = optional(_cfg,key,val)

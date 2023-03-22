@@ -21,3 +21,7 @@ This is a bit out-of-hand, so see below:
 """
 
 from .econfig import ExtractConfig
+from easydict import EasyDict as edict
+
+def dcat(cfg0,cfg1):
+    return edict({**cfg0,**cfg1})
