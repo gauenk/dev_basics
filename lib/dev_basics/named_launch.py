@@ -33,6 +33,10 @@ def parse():
                         help="The number of jobs per process.")
     parser.add_argument("user_id",type=str,default="gauenk",
                         help="The account name for squeue")
+    parser.add_argument('--exp_start',type=int,default=0,
+                        help="Start experiments with this id num (inclusive)")
+    parser.add_argument('--exp_end',type=int,default=-1,
+                        help="End experiments with this id num (exclusive)")
     parser.add_argument('--interval',type=float,default=1.,
                         help="Wait [interval] minutes. Then check for relaunching.")
     parser.add_argument('--min_time',type=int,default=2,
@@ -102,9 +106,19 @@ def run_launch_file(fn):
     slurm_info = proc.stdout
 
 def get_job_names(args):
-    names = []
+
+    # -- get proc num --
     nprocs = (args.njobs-1) // args.njobs_per_proc + 1
-    for proc_i in range(nprocs):
+    proc_grid = [p for p in range(nprocs)]
+    
+    # -- allow exp_id selection --
+    start = args.exp_start
+    end = nprocs if args.exp_end == -1 else args.exp_end
+    proc_grid = [proc_grid[i] for i in range(start,end)]
+
+    # -- read proc names --
+    names = []
+    for proc_i in proc_grid:
         job_start = proc_i * args.njobs_per_proc
         name_i = "%s_%d" % (args.job_id,job_start)
         names.append(name_i)
