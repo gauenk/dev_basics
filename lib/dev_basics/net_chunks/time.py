@@ -59,8 +59,14 @@ def run_temporal_chunks(fwd_fxn,tsize,overlap,vid,flows=None,verbose=True):
     t_chunks = get_chunks(nframes,tsize,overlap)
     vprint("t_chunks: ",t_chunks)
 
+    # -- output shape --
+    C = vid.shape[-3]
+    Cout = 3 if C in [3,4] else C
+    oshape = list(vid.shape)
+    oshape[-3] = Cout
+
     # -- alloc --
-    deno = th.zeros_like(vid)
+    deno = th.zeros(oshape,device=vid.device)
     Z = th.zeros(nframes,device=vid.device)
 
     # -- run --

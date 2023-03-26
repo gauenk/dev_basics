@@ -24,7 +24,7 @@ from pytorch_lightning import Callback
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import StochasticWeightAveraging
-from pytorch_lightning.utilities.distributed import rank_zero_only
+# from pytorch_lightning.utilities.distributed import rank_zero_only
 
 # -- dev basics --
 from .. import flow
@@ -291,11 +291,11 @@ class MetricsCallback(Callback):
                 val = val.cpu().numpy().item()
             self.metrics[key].append(val)
 
-    @rank_zero_only
-    def log_metrics(self, metrics, step):
-        # metrics is a dictionary of metric names and values
-        # your code to record metrics goes here
-        print("logging metrics: ",metrics,step)
+    # @rank_zero_only
+    # def log_metrics(self, metrics, step):
+    #     # metrics is a dictionary of metric names and values
+    #     # your code to record metrics goes here
+    #     print("logging metrics: ",metrics,step)
 
     def on_train_epoch_end(self, trainer, pl_module):
         each_me = copy.deepcopy(trainer.callback_metrics)
