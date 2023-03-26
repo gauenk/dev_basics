@@ -61,7 +61,7 @@ from pytorch_lightning.utilities.distributed import rank_zero_only
 
 @econfig.set_init
 def init_cfg(cfg):
-    econfig.set_cfg(cfg)
+    econfig.init(cfg)
     cfgs = econfig({"lit":lit_pairs(),
                     "sim":sim_pairs()})
     return cfgs
@@ -175,6 +175,12 @@ class LitModel(pl.LightningModule):
             denos.append(deno_i)
             cleans.append(clean_i)
         loss = loss / nbatches
+
+        # -- view params --
+        # loss.backward()
+        # for name, param in self.net.named_parameters():
+        #     if param.grad is None:
+        #         print(name)
 
         # -- append --
         denos = th.stack(denos)

@@ -1,5 +1,9 @@
 """
 
+  Each _function_ has a set of _keyword arguments_ (variable_name,default_value or given)
+  1. We want to extract these variables into a dictionary
+  2. We want to compose these dictionaries across functions
+
 Manage extracting configs for each package
 
 Logically connected to cache_io but there are not shared imports
@@ -17,3 +21,7 @@ This is a bit out-of-hand, so see below:
 """
 
 from .econfig import ExtractConfig
+from easydict import EasyDict as edict
+
+def dcat(cfg0,cfg1):
+    return edict({**cfg0,**cfg1})

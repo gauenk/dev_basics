@@ -56,13 +56,19 @@ def run_spatial_chunks(fwd_fxn,size,overlap,vid,flows=None,verbose=False):
     # -- setup --
     vprint = partial(_vprint,verbose)
     H,W = vid.shape[-2:] # .... H, W
+    C = vid.shape[-3]
+
+    # -- output shape --
+    Cout = 3 if C in [3,4] else C
+    oshape = list(vid.shape)
+    oshape[-3] = Cout
 
     # -- get chunks --
     h_chunks = get_chunks(H,size,overlap)
     w_chunks = get_chunks(W,size,overlap)
 
     # -- alloc --
-    deno = th.zeros_like(vid)
+    deno = th.zeros(oshape,device=vid.device)
     Z = th.zeros((H,W),device=vid.device)
 
     # -- run --

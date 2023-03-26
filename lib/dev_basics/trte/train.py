@@ -24,7 +24,7 @@ from pytorch_lightning import Callback
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import StochasticWeightAveraging
-from pytorch_lightning.utilities.distributed import rank_zero_only
+# from pytorch_lightning.utilities.distributed import rank_zero_only
 
 # -- dev basics --
 from .. import flow
@@ -36,7 +36,7 @@ from ..utils.metrics import compute_psnrs,compute_ssims
 # -- extract config --
 from ..configs import ExtractConfig
 econfig = ExtractConfig(__file__)
-extract_config = ExtractConfig.extract_config
+extract_config = econfig.extract_config
 
 def train_pairs():
     pairs = {"num_workers":4,
@@ -80,7 +80,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -=-=-=-=-=-=-=-=-
 
     # -- config --
-    econfig.set_cfg(cfg)
+    econfig.init(cfg)
     net_module = econfig.required_module(cfg,"python_module")
     lit_module = net_module.lightning
     sim_module = econfig.optional_module(cfg,"sim_module")
@@ -193,7 +193,8 @@ def init_paths(log_dir,pik_dir,chkpt_dir):
     log_subdirs = ["train"]
     for sub in log_subdirs:
         log_subdir = log_dir / sub
-        if not log_subdir.exists(): log_subdir.mkdir()
+        if not log_subdir.exists():
+            log_subdir.mkdir(parents=True)
 
     # -- prepare save directory for pickles --
     if not pik_dir.exists():
@@ -292,11 +293,11 @@ class MetricsCallback(Callback):
                 val = val.cpu().numpy().item()
             self.metrics[key].append(val)
 
-    @rank_zero_only
-    def log_metrics(self, metrics, step):
-        # metrics is a dictionary of metric names and values
-        # your code to record metrics goes here
-        print("logging metrics: ",metrics,step)
+    # @rank_zero_only
+    # def log_metrics(self, metrics, step):
+    #     # metrics is a dictionary of metric names and values
+    #     # your code to record metrics goes here
+    #     print("logging metrics: ",metrics,step)
 
     def on_train_epoch_end(self, trainer, pl_module):
         each_me = copy.deepcopy(trainer.callback_metrics)

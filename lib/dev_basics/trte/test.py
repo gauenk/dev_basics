@@ -39,16 +39,16 @@ def test_pairs():
              "flow_sigma":-1,"internal_adapt_nsteps":0,
              "internal_adapt_nepochs":0,"nframes":0,
              "save_deno":True,"python_module":"dev_basics.trte.id_model",
-             "bench_bwd":False}
+             "bench_bwd":False,"append_noise_map":False,"arch_name":"default"}
     return pairs
 
 @econfig.set_init
 def run(cfg):
 
     # -- config --
-    econfig.set_cfg(cfg)
+    econfig.init(cfg)
     epairs = econfig.extract_pairs
-    tcfg = epairs(test_pairs(),cfg)
+    tcfg = epairs(cfg,test_pairs())
     module = econfig.required_module(tcfg,'python_module')
     model_cfg = epairs(module.extract_model_config(tcfg),cfg)
     if econfig.is_init: return
@@ -58,12 +58,11 @@ def run(cfg):
     th.cuda.empty_cache()
     th.cuda.synchronize()
 
+    # -- set seed --
+    set_seed(tcfg.seed)
 
     # -- set device --
     th.cuda.set_device(int(tcfg.device.split(":")[1]))
-
-    # -- set seed --
-    set_seed(tcfg.seed)
 
     # -- init results --
     results = edict()
@@ -95,7 +94,6 @@ def run(cfg):
     # -- data --
     imax = 255.
     data,loaders = data_hub.sets.load(cfg)
-    print(list(data.keys()),tcfg.frame_start,tcfg.frame_end)
     indices = data_hub.filter_subseq(data[cfg.dset],cfg.vid_name,
                                      tcfg.frame_start,tcfg.frame_end)
     print(indices)
@@ -169,11 +167,18 @@ def run(cfg):
                     if hasattr(model,'reset_times'):
                         model.reset_times()
 
+        # -- append noise map --
+        noisy_input = noisy
+        if tcfg.append_noise_map:
+            B,T,C,H,W = noisy.shape
+            noise_map = th.ones((B,T,1,H,W),device=noisy.device)*cfg.sigma
+            noisy_input = th.cat([noisy,noise_map],2)
+
         # -- denoise! --
         with MemIt(memer,"deno"):
             with TimeIt(timer,"deno"):
                 with th.no_grad():
-                    deno = fwd_fxn(noisy/imax,flows)
+                    deno = fwd_fxn(noisy_input/imax,flows)
                 deno = deno.clamp(0.,1.)*imax
         mtimes = model.times
 
@@ -195,7 +200,24 @@ def run(cfg):
         psnrs = compute_psnrs(clean,deno,div=imax)
         ssims = compute_ssims(clean,deno,div=imax)
         strred = compute_strred(clean,deno,div=imax)
-        print(psnrs,np.mean(psnrs),np.mean(ssims),np.mean(strred))
+
+        # -- compare [delete me] --
+        # warps = model.warps
+        # print(warps.shape)
+        # ref = warps[:,:,:3]
+        # div = ref.max().item()
+        # K = 8
+        # cmps = rearrange(warps[:,:,3:],'b t (k c) h w -> k b t c h w',k=K)
+        # for k in range(K):
+        #     # mse = th.mean((ref - cmps[k])**2)
+        #     warp_psnrs = compute_psnrs(ref,cmps[k],div=div)
+        #     print(k,warp_psnrs)
+        # # exit(0)
+        # print(psnrs,np.mean(psnrs))
+        # import vrt
+        # print(deno.shape,clean.shape)
+        # psnrs = vrt.calculate_psnr(deno,clean)
+        # print(psnrs,np.mean(psnrs),np.mean(ssims),np.mean(strred))
 
         # -- measure bwd info --
         if tcfg.bench_bwd:

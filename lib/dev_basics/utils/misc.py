@@ -47,6 +47,8 @@ def set_seed(seed):
     random.seed(seed)
     th.manual_seed(seed)
     np.random.seed(seed)
+    # th.random.
+    # th.random.set_rng_state(seed)
 
 def read_yaml(fn):
     with open(fn,"r") as stream:
@@ -81,3 +83,13 @@ def nice_pretrained_path(pandas_series):
     epoch_num = split[1].str.slice(0,2)
     abbr = uuids_abbr + "-" + epoch_num
     return abbr
+
+def transpose_dict_list(pydict):
+    list_len = len(pydict[list(pydict.keys())[0]])
+    pylists = []
+    for l in range(list_len):
+        pylist_l = edict()
+        for key,val_list in pydict.items():
+            pylist_l[key] = val_list[l]
+        pylists.append(pylist_l)
+    return pylists
