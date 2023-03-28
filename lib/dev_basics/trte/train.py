@@ -142,7 +142,6 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     dset_tr = cfgs.tr.dset_tr
     dset_val = cfgs.tr.dset_val
     data,loaders = data_hub.sets.load(cfg)
-    print(cfgs.tr.uuid)
     print("Num Training Vids: ",len(data[dset_tr]))
     print("Log Dir: ",log_dir)
 
