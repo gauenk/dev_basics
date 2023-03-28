@@ -99,6 +99,8 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     overwrite_field("nepochs",cfgs.lit,nepochs)
     overwrite_field("flow_from_end",cfgs.lit,flow_from_end)
     overwrite_field("flow_epoch",cfgs.lit,flow_epoch)
+    if cfgs.tr.gradient_clip_val <= 0:
+        cfgs.tr.gradient_clip_val = None
 
     # -- init model/simulator/lightning --
     net = net_module.load_model(cfgs.net)
