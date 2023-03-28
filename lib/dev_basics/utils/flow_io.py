@@ -78,7 +78,7 @@ def _read_flows_npz(root,name,mmap_mode=None):
     # -- path --
     root = Path(root)
     path = root / ("%s.npz" % name)
-    flow = np.load(path,mmap_mode=mmap_mode)
+    flow = np.load(path,mmap_mode=mmap_mode,allow_pickle=True)
 
     # -- format --
     flows = edict({"fflow":flow['fflow'],

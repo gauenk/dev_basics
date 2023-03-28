@@ -40,6 +40,8 @@ extract_config = econfig.extract_config
 
 def train_pairs():
     pairs = {"num_workers":4,
+             "dset_tr":"tr",
+             "dset_val":"val",
              "persistent_workers":True,
              "rand_order_tr":True,
              "gradient_clip_algorithm":"norm",
@@ -135,9 +137,11 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
     # -- data --
+    dset_tr = cfgs.tr.dset_tr
+    dset_val = cfgs.tr.dset_val
     data,loaders = data_hub.sets.load(cfg)
     print(cfgs.tr.uuid)
-    print("Num Training Vids: ",len(data.tr))
+    print("Num Training Vids: ",len(data[dset]))
     print("Log Dir: ",log_dir)
 
     # -- pytorch_lightning training --
@@ -145,7 +149,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     ckpt_path = get_checkpoint(chkpt_dir,cfgs.tr.uuid,cfgs.tr.nepochs)
     print("Checkpoint Path: %s" % str(ckpt_path))
     timer.start("train")
-    trainer.fit(model, loaders.tr, loaders.val, ckpt_path=ckpt_path)
+    trainer.fit(model, loaders[dset_tr], loaders[dset_val], ckpt_path=ckpt_path)
     timer.stop("train")
     best_model_path = chkpt_callback.best_model_path
 
