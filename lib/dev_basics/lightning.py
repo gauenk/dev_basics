@@ -62,8 +62,9 @@ from pytorch_lightning.utilities.distributed import rank_zero_only
 @econfig.set_init
 def init_cfg(cfg):
     econfig.init(cfg)
-    cfgs = econfig({"lit":lit_pairs(),
-                    "sim":sim_pairs()})
+    cfgs = econfig.extract_dict_of_pairs(cfg,{"lit":lit_pairs(),
+                                              "sim":sim_pairs()},
+                                         restrict=True)
     return cfgs
 
 def lit_pairs():
