@@ -35,7 +35,8 @@ import cache_io # possibly circular import. yikes! but I like this better.
 import data_hub # again, possibly circular import. yikes! but I like this better.
 
 def filter_df(df,pydict):
-    fskip = ["regions","data_hub_crop","isize","frame_start","frame_end","nframes"]
+    fskip = ["regions","data_hub_crop","isize",
+             "frame_start","frame_end","nframes","name"]
     for field,val in pydict.items():
         if field in fskip: continue
         df = df[df[field] == val]
@@ -67,6 +68,7 @@ def extract_metrics(agg,label,df_i):
 def run_extraction(df,labels,fxn):
     agg = OrderedDict({})
     for label,conditions in labels.items():
+        # print(label,conditions)
         df_i = filter_df(df,conditions)
         assert len(df_i) == 1,"Must be len = 1."
         fxn(agg,label,df_i)
@@ -90,7 +92,10 @@ def load_pair(cfg,region):
     return noisy,clean
 
 def build_base(cfg,index):
-    return "%s_%s_%d" % (cfg.vid_name,cfg.sigma,index)
+    name = cfg.vid_name
+    if "name" in cfg and cfg.name != "":
+        name = "%s_%s" % (cfg.vid_name,cfg.name)
+    return "%s_%s_%d" % (name,cfg.sigma,index)
 
 def apply_region(region,vid):
     # -- check if exists --
