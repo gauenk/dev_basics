@@ -8,6 +8,11 @@ Benchmark Forward/Backward Runtime/Memory
 import numpy as np
 import torch as th
 
+# -- summary --
+from torchinfo import summary
+from functools import partial
+from easydict import EasyDict as edict
+
 # -- model io --
 import importlib
 
@@ -110,3 +115,12 @@ def load_sample(cfg):
     sample = data[cfg.dset][indices[0]]
     return sample['noisy'][None,:].to(cfg.device)
 
+def print_summary(cfg,vshape,with_flows=True):
+    model = load_model(cfg)
+    flows = edict()
+    fshape = (vshape[0],vshape[1],2,vshape[-2],vshape[-1])
+    flows.fflow = th.randn(fshape).to("cuda:0")
+    flows.bflow = th.randn(fshape).to("cuda:0")
+    if with_flows:
+        model.forward = partial(model.forward,flows=flows)
+    summary(model, input_size=vshape)
