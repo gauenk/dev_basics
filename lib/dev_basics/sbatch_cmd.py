@@ -56,7 +56,6 @@ def main():
     print(slurm_stderr)
     print("\n\nCheck sbatch_cmd.txt for info.")
 
-    
 def get_tmpdir():
     cmd = ["echo $TMPDIR"]
     proc = subprocess.run(cmd, capture_output=True, text=True, shell=True)

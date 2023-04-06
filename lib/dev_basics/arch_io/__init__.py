@@ -4,6 +4,7 @@ Some basic IO for dev
 
 """
 
+import pickle
 import torch as th
 from pathlib import Path
 
@@ -19,6 +20,8 @@ def load_checkpoint(model, path, root, wtype="git", mod=None):
     path = resolve_path(path,root)
     if wtype in ["git","original"]:
         load_checkpoint_git(model,path)
+    elif wtype in ["npy"]:
+        load_checkpoint_npy(model,path)
     elif wtype in ["lightning","lit"]:
         load_checkpoint_lit(model,path)
     elif wtype in ["mod"]:
@@ -45,6 +48,7 @@ def resolve_path(path,root):
 
     # -- 0.) check input --
     v0 = Path(root) / Path(path)
+    print(v0)
     exists = file_exists(v0)
     if exists: return v0
 
@@ -91,8 +95,39 @@ def load_checkpoint_git(model,path):
     checkpoint = th.load(path)
     model.load_state_dict(checkpoint)
 
+def load_checkpoint_npy(model,path):
+    # -- filename --
+    # with open(path, 'rb') as f:
+    #     checkpoint = pickle.load(f)
+    # checkpoint = checkpoint['model']
+    load_numpy_state_dict(model,path)
+
 def load_checkpoint_mod(model,path,modifier):
     # -- filename --
     state = th.load(path)
     state = modifier(state)
     model.load_state_dict(state)
+
+# load from numpy
+def load_numpy_state_dict(model, fname):
+    """
+    Set parameters converted from Caffe models authors of VGGFace2 provide.
+    See https://www.robots.ox.ac.uk/~vgg/data/vgg_face2/.
+    Arguments:
+        model: model
+        fname: file name of parameters converted from a Caffe model, assuming the file format is Pickle.
+    """
+    with open(fname, 'rb') as f:
+        weights = pickle.load(f, encoding='latin1')['model']
+
+    own_state = model.state_dict()
+    for name, param in weights.items():
+        if name in own_state:
+            try:
+                own_state[name].copy_(th.from_numpy(param))
+            except Exception:
+                raise RuntimeError('While copying the parameter named {}, whose dimensions in the model are {} and whose '\
+                                   'dimensions in the checkpoint are {}.'.format(name, own_state[name].size(), param.size()))
+        else:
+            raise KeyError('unexpected key "{}" in state_dict'.format(name))
+
