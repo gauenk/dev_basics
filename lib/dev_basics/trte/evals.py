@@ -6,16 +6,17 @@ Evaluation classes
 
 # -- utils --
 from dev_basics.utils import vid_io
+from pathlib import Path
+import detectron2
+from detectron2.evaluation import COCOEvaluator
 
-
-def get_evaluator(test_task):
+def get_evaluator(cfg,test_task):
     if test_task == "deno":
         return DenoEvaluator()
-    elif test_task in ["bbox","segm","keypoint"]:
-        return SegEvaluator()
+    elif test_task in ["bbox","seg","segm","keypoint"]:
+        return SegEvaluator(cfg)
     else:
         raise ValueError(f"Uknown evaluator [{test_task}]")
-
 
 class DenoEvaluator():
 
@@ -27,7 +28,7 @@ class DenoEvaluator():
 
     def save_output(self,cfg,output):
         out_dir = Path(cfg.saved_dir) / cfg.arch_name / str(cfg.uuid)
-        if tcfg.save_deno:
+        if cfg.save_deno:
             print("Saving Denoised Output [%s]" % out_dir)
             deno_fns = vid_io.save_video(deno,out_dir,"deno")
         else:
@@ -50,9 +51,11 @@ class DenoEvaluator():
 class SegEvaluator():
 
     def __init__(self,cfg):
-        tasks = ["bbox","segm"]
+        tasks = ("bbox","segm")
+        print(cfg)
+        dataset_name = "coco_2017_val"
         out_dir = Path(cfg.saved_dir) / cfg.arch_name / str(cfg.uuid)
-        self.coco_eval = COCOEvaluator(tasks,output_dir=out_dir)
+        self.coco_eval = COCOEvaluator(dataset_name,output_dir=out_dir)
         self.coco_eval.reset()
 
     def get_keys(self):
@@ -61,10 +64,22 @@ class SegEvaluator():
     def save_output(self,output):
         return {}
 
-    def eval_ouptut(self,inputs,outputs):
-        inputs['image_id'] = inputs['image_index']
+    def eval_output(self,inputs,outputs):
+        print(list(inputs.keys()))
+        inputs['image_id'] = int(inputs['index'])
+        # inputs = dictOfLists_to_listOfDicts(inputs)
+        inputs = [inputs]
         self.coco_eval.process(inputs,outputs)
-        res = self.coco_eval.evaluate(inputs['image_id'])
+        res = self.coco_eval.evaluate(inputs[0]['image_id'])
         return res
 
 
+def dictOfLists_to_listOfDicts(pydict):
+    pylist = []
+    L = len(pydict[list(pydict.keys())[0]])
+    for i in range(L):
+        pydict_i = {}
+        for key in pydict:
+            pydict_i[key] = pydict[key][i]
+        pylist.append(pydict_i)
+    return pylist

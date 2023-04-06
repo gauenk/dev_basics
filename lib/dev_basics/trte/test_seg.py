@@ -10,6 +10,7 @@ import torch as th
 from einops import rearrange,repeat
 
 # -- data mngmnt --
+import tqdm
 from pathlib import Path
 from easydict import EasyDict as edict
 
@@ -48,7 +49,7 @@ def test_pairs():
              "internal_adapt_nepochs":0,"nframes":0,
              "save_deno":True,"python_module":"dev_basics.trte.id_model",
              "bench_bwd":False,"append_noise_map":False,"arch_name":"default",
-             "test_task":"deno"}
+             "test_task":"segm"}
     return pairs
 
 @econfig.set_init
@@ -74,7 +75,7 @@ def run(cfg):
     th.cuda.set_device(int(tcfg.device.split(":")[1]))
 
     # -- load eval --
-    evaluator = get_evaluator(tcfg.test_task)
+    evaluator = get_evaluator(tcfg,tcfg.test_task)
     # evaluator.reset()
 
     # -- init results --
@@ -108,11 +109,13 @@ def run(cfg):
     # -- data --
     imax = 255.
     data,loaders = data_hub.sets.load(cfg)
-    indices = data_hub.filter_subseq(data[cfg.dset],cfg.vid_name,
-                                     tcfg.frame_start,tcfg.frame_end)
-    print(indices)
+    seg_tester = data.te.tester
+    seg_eval = data.te.evals
+    seg_eval.reset()
+    num = len(seg_tester)
 
-    for index in indices:
+    # -- over the dataset --
+    for index, inputs in tqdm.tqdm(enumerate(seg_tester),total=num):
 
         # -- create timer --
         timer = ExpTimer()
@@ -123,39 +126,48 @@ def run(cfg):
         # print("index: ",index)
 
         # -- unpack --
-        sample = data[cfg.dset][index]
-        region = sample['region']
-        noisy,clean = sample['noisy'][None,],sample['clean'][None,]
-        noisy,clean = noisy.to(tcfg.device),clean.to(tcfg.device)
-        vid_frames = sample['fnums'].numpy()
-        print("[%d] noisy.shape: " % index,noisy.shape)
+        # sample = data[cfg.dset][index]
+        # region = sample['region']
+        # noisy,clean = sample['noisy'][None,],sample['clean'][None,]
+        # noisy,clean = noisy.to(tcfg.device),clean.to(tcfg.device)
+        # vid_frames = sample['fnums'].numpy()
+        B = len(inputs)
+        image_ids = [inputs[b]['image_id'] for b in range(B)]
+        clean = [inputs[b]['image'] for b in range(B)]
+        clean = th.stack(clean)
+        # print("[%d] clean.shape: " % index,clean.shape)
 
         # -- resample noise for flow --
+        flow_img = clean
         if tcfg.flow_sigma >= 0:
-            noisy_f = th.normal(clean,tcfg.flow_sigma)
-        else:
-            noisy_f = noisy
+            flow_img = th.normal(clean,tcfg.flow_sigma)
 
         # -- optical flow --
         with TimeIt(timer,"flow"):
-            flows = flow.orun(noisy_f,tcfg.flow,ftype="svnlb")
+            flows = flow.orun(flow_img,tcfg.flow,ftype="svnlb")
+
+        # -- augmented testing --
+        aug_fxn = model.forward
+        fwd_fxn = model.forward
 
         # -- chunked processing --
-        chunk_cfg = net_chunks.extract_chunks_config(cfg)
-        if tcfg.longest_space_chunk:
-            set_longest_spatial_chunk(chunk_cfg,noisy.shape)
-        fwd_fxn = net_chunks.chunk(chunk_cfg,aug_fxn)
-        chunk_fwd = fwd_fxn
+        # chunk_cfg = net_chunks.extract_chunks_config(cfg)
+        # if tcfg.longest_space_chunk:
+        #     set_longest_spatial_chunk(chunk_cfg,noisy.shape)
+        # fwd_fxn = net_chunks.chunk(chunk_cfg,aug_fxn)
+        # chunk_fwd = fwd_fxn
+
 
         # -- denoise! --
         with MemIt(memer,"deno"):
             with TimeIt(timer,"deno"):
                 with th.no_grad():
-                    output = fwd_fxn(noisy/imax,flows)
+                    output = fwd_fxn(inputs,flows)
+        mtimes = {}
 
         # -- save example --
-        res_info = evaluator.save_output(tcfg,output)
-        for k,v in res_info.items(): results[k] = v
+        # res_info = evaluator.save_output(tcfg,output)
+        # for k,v in res_info.items(): results[k] = v
         # out_dir = Path(tcfg.saved_dir) / tcfg.arch_name / str(tcfg.uuid)
         # if tcfg.save_deno:
         #     print("Saving Denoised Output [%s]" % out_dir)
@@ -164,8 +176,14 @@ def run(cfg):
         #     deno_fns = ["" for _ in range(deno.shape[0])]
 
         # -- deno quality metrics --
-        res_info = evaluator.eval_output(sample,output)
-        for k,v in res_info.items(): results[k] = v
+        # print(inputs)
+        seg_eval.process(inputs,output)
+        # seg_results = seg_eval.evaluate()
+        # print(image_ids)
+        # seg_res = seg_eval.evaluate(image_ids)
+        # print(seg_res)
+        # print(res_info)
+        # for k,v in res_info.items(): results[k] = v
         # noisy_psnrs = compute_psnrs(noisy,clean,div=imax)
         # psnrs = compute_psnrs(clean,deno,div=imax)
         # ssims = compute_ssims(clean,deno,div=imax)
@@ -200,8 +218,8 @@ def run(cfg):
         # results.strred.append(strred)
         # results.noisy_psnrs.append(noisy_psnrs)
         # results.deno_fns.append(deno_fns)
-        results.vid_frames.append(vid_frames)
-        results.vid_name.append([cfg.vid_name])
+        # results.vid_frames.append(vid_frames)
+        # results.vid_name.append([cfg.vid_name])
         for name,(mem_res,mem_alloc) in memer.items():
             key = "%s_%s" % (name,"mem_res")
             results[key].append([mem_res])
@@ -219,6 +237,10 @@ def run(cfg):
     # -- clear --
     th.cuda.empty_cache()
     th.cuda.synchronize()
+
+    # -- results --
+    seg_results = seg_eval.evaluate()
+    print(seg_results)
 
     return results
 

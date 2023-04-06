@@ -58,7 +58,6 @@ def main():
     print(slurm_stderr)
     print("\n\nCheck %s for info." % args.outfile)
 
-    
 def get_tmpdir():
     cmd = ["echo $TMPDIR"]
     proc = subprocess.run(cmd, capture_output=True, text=True, shell=True)

@@ -35,7 +35,7 @@ class GpuMemer(): # like "Timer"
         if self.use_mem is False: return
         th.cuda.synchronize()
         th.cuda.empty_cache()
-        th.cuda.reset_max_memory_allocated()
+        th.cuda.reset_peak_memory_stats()
         th.cuda.synchronize()
 
     def stop(self,name):
@@ -75,7 +75,7 @@ def print_gpu_stats(verbose,name):
     return mem_alloc,mem_res
 
 def reset_peak_gpu_stats():
-    th.cuda.reset_max_memory_allocated()
+    th.cuda.reset_peak_memory_stats()
 
 def print_peak_gpu_stats(verbose,name,reset=True):
     fmt = "[%s] Peak Memory Allocated [GB]: %2.3f"
