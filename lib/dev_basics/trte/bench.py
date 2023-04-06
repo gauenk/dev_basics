@@ -8,6 +8,11 @@ Benchmark Forward/Backward Runtime/Memory
 import numpy as np
 import torch as th
 
+# -- summary --
+from torchinfo import summary
+from functools import partial
+from easydict import EasyDict as edict
+
 # -- model io --
 import importlib
 
@@ -32,23 +37,24 @@ def run(cfg):
     vid = load_sample(cfg)
     model = load_model(cfg)
     flows = flow.orun(vid,cfg.flow)
+    vid = vid[0]
 
     # -- init --
-    model(vid,flows)
+    model(vid,flows=flows)
 
     # -- bench fwd --
     with th.no_grad():
         with TimeIt(timer,"fwd_nograd"):
             with MemIt(memer,"fwd_nograd"):
-                model(vid,flows)
+                model(vid,flows=flows)
 
     # -- bench fwd --
     with TimeIt(timer,"fwd"):
         with MemIt(memer,"fwd"):
-            model(vid,flows)
+            model(vid,flows=flows)
 
     # -- compute grad --
-    deno = model(vid,flows)
+    deno = model(vid,flows=flows)
     error = th.randn_like(deno)
     loss = th.mean((error - deno)**2)
 
@@ -65,7 +71,36 @@ def run(cfg):
         results["res_%s"%key] = res
         results["alloc_%s"%key] = alloc
 
-    print(results)
+    return results
+
+def run_fwd(cfg):
+
+    # -- timer/memer --
+    timer = ExpTimer()
+    memer = GpuMemer()
+
+    # -- load --
+    vid = load_sample(cfg)
+    model = load_model(cfg)
+    flows = flow.orun(vid,cfg.flow)
+    vid = vid[0]
+
+    # -- init --
+    model(vid,flows=flows)
+
+    # -- bench fwd --
+    with th.no_grad():
+        with TimeIt(timer,"fwd_nograd"):
+            with MemIt(memer,"fwd_nograd"):
+                model(vid,flows=flows)
+    # -- fill results --
+    results = {}
+    for key,val in timer.items():
+        results[key] = val
+    for key,(res,alloc) in memer.items():
+        results["res_%s"%key] = res
+        results["alloc_%s"%key] = alloc
+
     return results
 
 def load_model(cfg):
@@ -80,3 +115,12 @@ def load_sample(cfg):
     sample = data[cfg.dset][indices[0]]
     return sample['noisy'][None,:].to(cfg.device)
 
+def print_summary(cfg,vshape,with_flows=True):
+    model = load_model(cfg)
+    flows = edict()
+    fshape = (vshape[0],vshape[1],2,vshape[-2],vshape[-1])
+    flows.fflow = th.randn(fshape).to("cuda:0")
+    flows.bflow = th.randn(fshape).to("cuda:0")
+    if with_flows:
+        model.forward = partial(model.forward,flows=flows)
+    summary(model, input_size=vshape)

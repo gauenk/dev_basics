@@ -28,6 +28,8 @@ def parse():
                         help="The number of cpus to launch.")
     parser.add_argument("--ngpus",type=int,default=1,
                         help="The number of gpus to launch.")
+    parser.add_argument("--outfile",type=str,default="sbatch_cmd.txt",
+                        help="The output file.")
     args = parser.parse_args()
     return edict(vars(args))
 
@@ -54,7 +56,7 @@ def main():
     print(slurm_stdout)
     print("---> Stderr <---")
     print(slurm_stderr)
-    print("\n\nCheck sbatch_cmd.txt for info.")
+    print("\n\nCheck %s for info." % args.outfile)
 
 def get_tmpdir():
     cmd = ["echo $TMPDIR"]
@@ -71,7 +73,7 @@ def create_content(args,cwd):
     if args.ngpus > 0:
         cmd += "#SBATCH --gpus-per-node %d\n" % args.ngpus
     cmd += "#SBATCH --job-name sbatch_cmd\n"
-    cmd += "#SBATCH --output sbatch_cmd.txt\n"
+    cmd += "#SBATCH --output %s\n" % args.outfile
     cmd += "WORKDIR=%s\n" % cwd
     cmd += "/bin/hostname\n"
     cmd += args.launch_cmd

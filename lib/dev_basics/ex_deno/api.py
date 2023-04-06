@@ -18,13 +18,12 @@ from .impl import save_example,filter_df
 def run(example_cfg,results):
 
     # -- load deno examples info --
-    print(results[['psnrs','label']])
-
     cfg = edict(read_yaml(example_cfg))
     save_args = cfg.save_args
     labels = cfg.labels
     save_args.root = Path(save_args.root)
     examples = [cfg[key] for key in cfg.keys() if 'example' in key]
+    print(len(examples))
 
     # -- global filter --
     results = filter_df(results,cfg.global_filter)

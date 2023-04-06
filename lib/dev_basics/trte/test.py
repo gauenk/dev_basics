@@ -252,7 +252,6 @@ def run(cfg):
 
     return results
 
-
 def measure_bwd(model,fwd_fxn,flows,noisy,clean,timer,memer):
 
     # -- train mode --
