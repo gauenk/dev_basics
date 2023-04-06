@@ -59,6 +59,7 @@ def train_pairs():
              "nsamples_at_testing":1,
              "isize":"128_128",
              "subdir":"",
+             "save_epoch_list":"",
     }
     return pairs
 
@@ -220,13 +221,14 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
 def create_trainer(cfgs,log_dir,chkpt_dir):
     logger = CSVLogger(log_dir,name="train",flush_logs_every_n_steps=1)
     ckpt_fn_val = cfgs.tr.uuid + "-{epoch:02d}-{val_loss:2.2e}"
+    checkpoint_list = SaveCheckpointList(cfgs.tr.uuid,chkpt_dir,cfgs.tr.save_epoch_list)
     checkpoint_callback = ModelCheckpoint(monitor="val_loss",save_top_k=11,
                                           mode="min",dirpath=chkpt_dir,
                                           filename=ckpt_fn_val)
     ckpt_fn_epoch = cfgs.tr.uuid + "-{epoch:02d}"
     cc_recent = ModelCheckpoint(monitor="epoch",save_top_k=11,mode="max",
                                 dirpath=chkpt_dir,filename=ckpt_fn_epoch)
-    callbacks = [checkpoint_callback,cc_recent]
+    callbacks = [checkpoint_list,checkpoint_callback,cc_recent]
     if cfgs.tr.swa:
         swa_callback = StochasticWeightAveraging(swa_lrs=cfgs.tr.lr_init,
                                 swa_epoch_start=cfgs.tr.swa_epoch_start)
@@ -279,6 +281,23 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
     # -- reset model --
     model.isize = cfg.isize
     return results,res_fn
+
+class SaveCheckpointList(Callback):
+
+    def __init__(self,uuid,outdir,save_epochs):
+        super().__init__()
+        self.uuid = uuid
+        self.outdir = outdir
+        self.save_epochs = [int(s) for s in save_epochs.split("-")]
+        print(self.save_epochs)
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        uuid = self.uuid
+        epoch = self.trainer.current_epoch
+        if not(epoch in self.save_epochs): return
+        path = Path(self.outdir / ("%s-save-epoch=%02d.ckpt" % (uuid,epoch)))
+        trainer.save_checkpoint(str(path))
+
 
 class MetricsCallback(Callback):
     """PyTorch Lightning metric callback."""
