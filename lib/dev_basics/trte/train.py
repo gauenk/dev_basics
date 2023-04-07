@@ -288,12 +288,13 @@ class SaveCheckpointList(Callback):
         super().__init__()
         self.uuid = uuid
         self.outdir = outdir
-        self.save_epochs = [int(s) for s in save_epochs.split("-")]
-        print(self.save_epochs)
+        self.save_epochs = []
+        if "-" in save_epochs:
+            self.save_epochs = [int(s) for s in save_epochs.split("-")]
 
     def on_train_epoch_end(self, trainer, pl_module):
         uuid = self.uuid
-        epoch = self.trainer.current_epoch
+        epoch = trainer.current_epoch
         if not(epoch in self.save_epochs): return
         path = Path(self.outdir / ("%s-save-epoch=%02d.ckpt" % (uuid,epoch)))
         trainer.save_checkpoint(str(path))
