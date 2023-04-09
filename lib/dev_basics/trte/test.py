@@ -37,7 +37,7 @@ def test_pairs():
              "flow":False,"burn_in":False,"arch_name":None,
              "saved_dir":"./output/saved_examples/","uuid":"uuid_def",
              "flow_sigma":-1,"internal_adapt_nsteps":0,
-             "internal_adapt_nepochs":0,"nframes":0,
+             "internal_adapt_nepochs":0,"nframes":0,"read_flows":False,
              "save_deno":True,"python_module":"dev_basics.trte.id_model",
              "bench_bwd":False,"append_noise_map":False,"arch_name":"default"}
     return pairs
@@ -124,7 +124,12 @@ def run(cfg):
 
         # -- optical flow --
         with TimeIt(timer,"flow"):
-            flows = flow.orun(noisy_f,tcfg.flow,ftype="svnlb")
+            if tcfg.read_flows:
+                flows = {'fflow':sample['fflow'],'bflow':sample['bflow']}
+                flows = edict({k:flows[k][None,:].to(tcfg.device) for k in flows})
+            else:
+                flows = flow.orun(noisy_f,tcfg.flow,ftype="svnlb")
+        print([flows[k].shape for k in flows])
 
         # -- augmented testing --
         if tcfg.aug_test:
