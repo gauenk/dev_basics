@@ -31,7 +31,7 @@ def parse():
                         help="The total number of jobs")
     parser.add_argument("njobs_per_proc",type=int,
                         help="The number of jobs per process.")
-    parser.add_argument("user_id",type=str,default="gauenk",
+    parser.add_argument("user_id",type=str,default=os.getlogin(),
                         help="The account name for squeue")
     parser.add_argument('--exp_start',type=int,default=0,
                         help="Start experiments with this id num (inclusive)")
