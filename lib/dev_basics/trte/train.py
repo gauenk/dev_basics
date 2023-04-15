@@ -34,7 +34,7 @@ from ..utils.timer import ExpTimer,TimeIt
 from ..utils.metrics import compute_psnrs,compute_ssims
 
 # -- extract config --
-from ..configs import ExtractConfig
+from ..configs import ExtractConfig,dcat
 econfig = ExtractConfig(__file__)
 extract_config = econfig.extract_config
 
@@ -94,6 +94,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
                                 "net":net_extract_config(cfg),
                                 "lit":lit_extract_config(cfg),
                                 "sim":sim_extract_config(cfg)})
+    cfg = dcat(cfg,econfig.flatten(cfgs)) # update cfg
     if econfig.is_init: return
     # overwrite_nepochs(cfgs.tr,nepochs)
     overwrite_field("nepochs",cfgs.tr,nepochs)

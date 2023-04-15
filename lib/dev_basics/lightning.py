@@ -104,8 +104,9 @@ class LitModel(pl.LightningModule):
         self.gen_loger.setLevel("NOTSET")
         self.automatic_optimization=True
 
-    def forward(self,vid):
-        flows = flow.orun(vid,self.flow,ftype=self.flow_method)
+    def forward(self,vid,flows=None):
+        if flows is None:
+            flows = flow.orun(vid,self.flow,ftype=self.flow_method)
         deno = self.net(vid,flows=flows)
         return deno
 
@@ -204,10 +205,17 @@ class LitModel(pl.LightningModule):
         # -- unpack batch
         noisy = batch['noisy'][start:stop]/255.
         clean = batch['clean'][start:stop]/255.
-        # print("noisy.shape: ",noisy.shape)
+        fflow = batch['fflow'][start:stop]
+        bflow = batch['bflow'][start:stop]
+
+        # -- make flow --
+        if fflow.shape[-2:] == noisy.shape[-2:]:
+            flows = edict({"fflow":fflow,"bflow":bflow})
+        else:
+            flows = None
 
         # -- foward --
-        deno = self.forward(noisy)
+        deno = self.forward(noisy,flows)
 
         # -- report loss --
         loss = th.mean((clean - deno)**2)
@@ -221,10 +229,18 @@ class LitModel(pl.LightningModule):
         # -- denoise --
         noisy,clean = batch['noisy']/255.,batch['clean']/255.
 
+        # -- flow --
+        fflow = batch['fflow']
+        bflow = batch['bflow']
+        if fflow.shape[-2:] == noisy.shape[-2:]:
+            flows = edict({"fflow":fflow,"bflow":bflow})
+        else:
+            flows = None
+
         # -- forward --
         gpu_mem.print_peak_gpu_stats(False,"val",reset=True)
         with th.no_grad():
-            deno = self.forward(noisy)
+            deno = self.forward(noisy,flows)
         mem_res,mem_alloc = gpu_mem.print_peak_gpu_stats(False,"val",reset=True)
 
         # -- loss --
@@ -251,10 +267,18 @@ class LitModel(pl.LightningModule):
         index = float(batch['index'][0].item())
         noisy,clean = batch['noisy']/255.,batch['clean']/255.
 
+        # -- flow --
+        fflow = batch['fflow']
+        bflow = batch['bflow']
+        if fflow.shape[-2:] == noisy.shape[-2:]:
+            flows = edict({"fflow":fflow,"bflow":bflow})
+        else:
+            flows = None
+
         # -- forward --
         gpu_mem.print_peak_gpu_stats(False,"test",reset=True)
         with th.no_grad():
-            deno = self.forward(noisy)
+            deno = self.forward(noisy,flows)
         mem_res,mem_alloc = gpu_mem.print_peak_gpu_stats(False,"test",reset=True)
 
         # -- compare --
