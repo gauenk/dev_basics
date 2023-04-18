@@ -125,14 +125,25 @@ def get_job_names(args):
     return names
 
 def get_launch_files(args):
+
+    # -- launch base --
     launch_dir = Path("./dispatch/%s/launching/" % args.job_id)
-    launch_files = []
+
+    # -- allow exp_id selection --
     nprocs = (args.njobs-1) // args.njobs_per_proc + 1
-    for proc_i in range(nprocs):
+    proc_grid = [p for p in range(nprocs)]
+    start = args.exp_start
+    end = nprocs if args.exp_end == -1 else args.exp_end
+    proc_grid = [proc_grid[i] for i in range(start,end)]
+
+    # -- launch files --
+    launch_files = []
+    for proc_i in proc_grid:
         job_start = proc_i * args.njobs_per_proc
         job_end = job_start + args.njobs_per_proc
         fn_i = "%s_%d_%d.sh" % (args.job_uuid,job_start,job_end)
         launch_files.append(launch_dir / fn_i)
+
     return launch_files
 
 def sleep_bar(nmins):

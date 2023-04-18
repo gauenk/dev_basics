@@ -22,13 +22,13 @@ def parse():
                         help="The command to launch with sbatch")
     parser.add_argument("--account",type=str,default="standby",
                         help="The account to launch")
-    parser.add_argument("--time",type=str,default="0-4:00:00",
+    parser.add_argument("-T","--time",type=str,default="0-4:00:00",
                         help="The time limit of the proc")
     parser.add_argument("--ncpus",type=int,default=1,
                         help="The number of cpus to launch.")
     parser.add_argument("--ngpus",type=int,default=1,
                         help="The number of gpus to launch.")
-    parser.add_argument("--outfile",type=str,default="sbatch_cmd.txt",
+    parser.add_argument("-O","--outfile",type=str,default="sbatch_cmd.txt",
                         help="The output file.")
     args = parser.parse_args()
     return edict(vars(args))
