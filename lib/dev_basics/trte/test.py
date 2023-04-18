@@ -32,7 +32,7 @@ extract_config = econfig.extract_config
 
 def test_pairs():
     pairs = {"device":"cuda:0","seed":123,
-             "frame_start":0,"frame_end":-1,
+             "frame_start":0,"frame_end":-1,"dset":"val",
              "aug_test":False,"longest_space_chunk":False,
              "flow":False,"burn_in":False,"arch_name":None,
              "saved_dir":"./output/saved_examples/","uuid":"uuid_def",
@@ -94,7 +94,7 @@ def run(cfg):
     # -- data --
     imax = 255.
     data,loaders = data_hub.sets.load(cfg)
-    indices = data_hub.filter_subseq(data[cfg.dset],cfg.vid_name,
+    indices = data_hub.filter_subseq(data[tcfg.dset],cfg.vid_name,
                                      tcfg.frame_start,tcfg.frame_end)
     print(indices)
 

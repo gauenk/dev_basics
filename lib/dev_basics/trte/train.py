@@ -310,11 +310,15 @@ class MetricsCallback(Callback):
 
     def _accumulate_results(self,each_me):
         for key,val in each_me.items():
+            # print(key,val)
             if not(key in self.metrics):
                 self.metrics[key] = []
             if hasattr(val,"ndim"):
                 ndim = val.ndim
-                val = val.cpu().numpy().item()
+                if isinstance(val,th.tensor):
+                    val = val.cpu().numpy().item()
+                else:
+                    val = val
             self.metrics[key].append(val)
 
     # @rank_zero_only
