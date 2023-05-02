@@ -26,6 +26,15 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import StochasticWeightAveraging
 # from pytorch_lightning.utilities.distributed import rank_zero_only
 
+# -- wandb --
+WANDB_AVAIL = False
+try:
+    import wandb
+    from pytorch_lightning.loggers import WandbLogger
+    WANDB_AVAIL = True
+except:
+    pass
+
 # -- dev basics --
 from .. import flow
 from ..utils.misc import set_seed
@@ -60,6 +69,7 @@ def train_pairs():
              "isize":"128_128",
              "subdir":"",
              "save_epoch_list":"",
+             "use_wandb":False
     }
     return pairs
 
@@ -147,6 +157,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     print("Num Training Vids: ",len(data[dset_tr]))
     print("Log Dir: ",log_dir)
 
+
     # -- pytorch_lightning training --
     trainer,chkpt_callback = create_trainer(cfgs,log_dir,chkpt_dir)
     ckpt_path = get_checkpoint(chkpt_dir,cfgs.tr.uuid,cfgs.tr.nepochs)
@@ -220,7 +231,7 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
 
 
 def create_trainer(cfgs,log_dir,chkpt_dir):
-    logger = CSVLogger(log_dir,name="train",flush_logs_every_n_steps=1)
+    logger = get_logger(log_dir,"train",cfgs.tr.use_wandb)
     ckpt_fn_val = cfgs.tr.uuid + "-{epoch:02d}-{val_loss:2.2e}"
     checkpoint_list = SaveCheckpointList(cfgs.tr.uuid,chkpt_dir,cfgs.tr.save_epoch_list)
     checkpoint_callback = ModelCheckpoint(monitor="val_loss",save_top_k=11,
@@ -246,6 +257,15 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
 
     return trainer,checkpoint_callback
 
+def get_logger(log_dir,name,use_wandb):
+    if use_wandb and WANDB_AVAIL:
+        logger = WandbLogger(name=name)
+    else:
+        logger = CSVLogger(log_dir,name=name,flush_logs_every_n_steps=1)
+    print(logger)
+
+    return logger
+
 def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
 
     # -- load dataset with testing mods isizes --
@@ -260,7 +280,7 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
 
     # -- setup --
     val_report = MetricsCallback()
-    logger = CSVLogger(log_dir,name=name,flush_logs_every_n_steps=1)
+    logger = get_logger(log_dir,"val",cfg.use_wandb)
     trainer = pl.Trainer(accelerator="gpu",devices=1,precision=32,
                          limit_train_batches=1.,
                          max_epochs=3,log_every_n_steps=1,

@@ -44,6 +44,14 @@ import importlib
 # except:
 #     pass
 
+# # -- wandb --
+# WANDB_AVAIL = False
+# try:
+#     import wandb
+#     WANDB_AVAIL = True
+# except:
+#     pass
+
 # -- generic logging --
 import logging
 logging.basicConfig()
@@ -73,7 +81,8 @@ def lit_pairs():
              "lr_final":1e-8,"weight_decay":0.,
              "nepochs":0,"task":"denoising","uuid":"",
              "scheduler":"default","step_lr_size":5,
-             "step_lr_gamma":0.1,"flow_epoch":None,"flow_from_end":None}
+             "step_lr_gamma":0.1,"flow_epoch":None,"flow_from_end":None,
+             "use_wandb":False}
     return pairs
 
 def sim_pairs():
@@ -185,8 +194,8 @@ class LitModel(pl.LightningModule):
         #         print(name)
 
         # -- append --
-        denos = th.stack(denos)
-        cleans = th.stack(cleans)
+        denos = th.cat(denos)
+        cleans = th.cat(cleans)
 
         # -- log --
         self.log("train_loss", loss.item(), on_step=True,
@@ -194,9 +203,15 @@ class LitModel(pl.LightningModule):
 
         # -- terminal log --
         val_psnr = np.mean(compute_psnrs(denos,cleans,div=1.)).item()
-        self.gen_loger.info("train_psnr: %2.2f" % val_psnr)
+        # val_ssim = np.mean(compute_ssims(denos,cleans,div=1.)).item() # too slow.
+
+        # self.gen_loger.info("train_psnr: %2.2f" % val_psnr)
         self.log("train_loss", loss.item(), on_step=True,
                  on_epoch=False, batch_size=self.batch_size)
+        self.log("train_psnr", val_psnr, on_step=True,
+                 on_epoch=False, batch_size=self.batch_size)
+        # self.log("train_ssim", val_ssim, on_step=True,
+        #          on_epoch=False, batch_size=self.batch_size)
 
         return loss
 
@@ -245,6 +260,8 @@ class LitModel(pl.LightningModule):
 
         # -- loss --
         loss = th.mean((clean - deno)**2)
+        val_psnr = np.mean(compute_psnrs(deno,clean,div=1.)).item()
+        val_ssim = np.mean(compute_ssims(deno,clean,div=1.)).item()
 
         # -- report --
         self.log("val_loss", loss.item(), on_step=False,
@@ -253,10 +270,13 @@ class LitModel(pl.LightningModule):
                  on_epoch=True,batch_size=1,sync_dist=True)
         self.log("val_mem_alloc", mem_alloc, on_step=False,
                  on_epoch=True,batch_size=1,sync_dist=True)
-
-        # -- terminal log --
-        val_psnr = np.mean(compute_psnrs(deno,clean,div=1.)).item()
+        self.log("val_psnr", val_psnr, on_step=False,
+                 on_epoch=True,batch_size=1,sync_dist=True)
+        self.log("val_ssim", val_ssim, on_step=False,
+                 on_epoch=True,batch_size=1,sync_dist=True)
         self.gen_loger.info("val_psnr: %2.2f" % val_psnr)
+        self.gen_loger.info("val_ssim: %.3f" % val_ssim)
+
 
     def test_step(self, batch, batch_nb):
 
@@ -287,12 +307,13 @@ class LitModel(pl.LightningModule):
         ssim = np.mean(compute_ssims(deno,clean,div=1.)).item()
 
         # -- terminal log --
-        self.log("psnr", psnr, on_step=True, on_epoch=False, batch_size=1)
-        self.log("ssim", ssim, on_step=True, on_epoch=False, batch_size=1)
-        self.log("index", index,on_step=True,on_epoch=False,batch_size=1)
-        self.log("mem_res",  mem_res, on_step=True, on_epoch=False, batch_size=1)
-        self.log("mem_alloc",  mem_alloc, on_step=True, on_epoch=False, batch_size=1)
+        self.log("test_psnr", psnr, on_step=True, on_epoch=False, batch_size=1)
+        self.log("test_ssim", ssim, on_step=True, on_epoch=False, batch_size=1)
+        self.log("test_index", index,on_step=True,on_epoch=False,batch_size=1)
+        self.log("test_mem_res", mem_res, on_step=True, on_epoch=False, batch_size=1)
+        self.log("test_mem_alloc", mem_alloc,on_step=True,on_epoch=False,batch_size=1)
         self.gen_loger.info("te_psnr: %2.2f" % psnr)
+        self.gen_loger.info("te_ssim: %.3f" % ssim)
 
         # -- log --
         results = edict()
