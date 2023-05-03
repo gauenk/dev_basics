@@ -82,7 +82,9 @@ def lit_pairs():
              "nepochs":0,"task":"denoising","uuid":"",
              "scheduler_name":"default","step_lr_size":5,
              "step_lr_gamma":0.1,"flow_epoch":None,"flow_from_end":None,
-             "use_wandb":False}
+             "use_wandb":False,
+             "optim_name":"adam","sgd_momentum":0.1,"sgd_dampening":0.1,
+             "coswr_T0":-1,"coswr_Tmult":1,"coswr_eta_min":1e-9}
     return pairs
 
 def sim_pairs():
@@ -138,8 +140,16 @@ class LitModel(pl.LightningModule):
             self.flow = True
 
     def configure_optimizers(self):
-        optim = th.optim.Adam(self.parameters(),lr=self.lr_init,
-                              weight_decay=self.weight_decay)
+        if self.optim_name == "adam":
+            optim = th.optim.Adam(self.parameters(),lr=self.lr_init,
+                                  weight_decay=self.weight_decay)
+        elif self.optim_name == "sgd":
+            optim = th.optim.SGD(self.parameters(),lr=self.lr_init,
+                                 weight_decay=self.weight_decay,
+                                 momentum=self.sgd_momentum,
+                                 dampening=self.sgd_dampening)
+        else:
+            raise ValueError(f"Unknown optim [{self.optim_name}]")
         sched = self.configure_scheduler(optim)
         return [optim], [sched]
 
@@ -158,6 +168,14 @@ class LitModel(pl.LightningModule):
             CosAnnLR = th.optim.lr_scheduler.CosineAnnealingLR
             T0,Tmult = 1,1
             scheduler = CosAnnLR(optim,T0,Tmult)
+        elif self.scheduler_name in ["coswr"]:
+            lr_sched =th.optim.lr_scheduler
+            CosineAnnealingWarmRestarts = lr_sched.CosineAnnealingWarmRestarts
+            # print(self.coswr_T0,self.coswr_Tmult,self.coswr_eta_min)
+            scheduler = CosineAnnealingWarmRestarts(optim,self.coswr_T0,
+                                                    T_mult=self.coswr_Tmult,
+                                                    eta_min=self.coswr_eta_min)
+            scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
         elif self.scheduler_name in ["none"]:
             StepLR = th.optim.lr_scheduler.StepLR
             scheduler = StepLR(optim,step_size=10**3,gamma=1.)
