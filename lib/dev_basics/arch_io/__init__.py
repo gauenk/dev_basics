@@ -48,7 +48,7 @@ def resolve_path(path,root):
 
     # -- 0.) check input --
     v0 = Path(root) / Path(path)
-    print(v0)
+    # print(v0)
     exists = file_exists(v0)
     if exists: return v0
 

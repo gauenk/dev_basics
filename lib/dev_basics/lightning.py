@@ -210,8 +210,14 @@ class LitModel(pl.LightningModule):
                  on_epoch=False, batch_size=self.batch_size)
         self.log("train_psnr", val_psnr, on_step=True,
                  on_epoch=False, batch_size=self.batch_size)
+        lr = self.optimizers().param_groups[-1]['lr']
+        self.log("lr", lr, on_step=True,
+                 on_epoch=False, batch_size=self.batch_size)
+        self.log("global_step", self.global_step, on_step=True,
+                 on_epoch=False, batch_size=self.batch_size)
         # self.log("train_ssim", val_ssim, on_step=True,
         #          on_epoch=False, batch_size=self.batch_size)
+        self.gen_loger.info("train_psnr: %2.2f" % val_psnr)
 
         return loss
 
