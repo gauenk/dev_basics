@@ -80,9 +80,11 @@ def lit_pairs():
              "isize":None,"bw":False,"lr_init":1e-3,
              "lr_final":1e-8,"weight_decay":0.,
              "nepochs":0,"task":"denoising","uuid":"",
-             "scheduler":"default","step_lr_size":5,
+             "scheduler_name":"default","step_lr_size":5,
              "step_lr_gamma":0.1,"flow_epoch":None,"flow_from_end":None,
-             "use_wandb":False}
+             "use_wandb":False,
+             "optim_name":"adam","sgd_momentum":0.1,"sgd_dampening":0.1,
+             "coswr_T0":-1,"coswr_Tmult":1,"coswr_eta_min":1e-9}
     return pairs
 
 def sim_pairs():
@@ -138,31 +140,47 @@ class LitModel(pl.LightningModule):
             self.flow = True
 
     def configure_optimizers(self):
-        optim = th.optim.Adam(self.parameters(),lr=self.lr_init,
-                              weight_decay=self.weight_decay)
+        if self.optim_name == "adam":
+            optim = th.optim.Adam(self.parameters(),lr=self.lr_init,
+                                  weight_decay=self.weight_decay)
+        elif self.optim_name == "sgd":
+            optim = th.optim.SGD(self.parameters(),lr=self.lr_init,
+                                 weight_decay=self.weight_decay,
+                                 momentum=self.sgd_momentum,
+                                 dampening=self.sgd_dampening)
+        else:
+            raise ValueError(f"Unknown optim [{self.optim_name}]")
         sched = self.configure_scheduler(optim)
         return [optim], [sched]
 
     def configure_scheduler(self,optim):
-        if self.scheduler in ["default","exp_decay"]:
+        if self.scheduler_name in ["default","exp_decay"]:
             gamma = 1-math.exp(math.log(self.lr_final/self.lr_init)/self.nepochs)
             ExponentialLR = th.optim.lr_scheduler.ExponentialLR
             scheduler = ExponentialLR(optim,gamma=gamma) # (.995)^50 ~= .78
-        elif self.scheduler in ["step","steplr"]:
+        elif self.scheduler_name in ["step","steplr"]:
             args = (self.step_lr_size,self.step_lr_gamma)
             print("[Scheduler]: StepLR(%d,%2.2f)" % args)
             StepLR = th.optim.lr_scheduler.StepLR
             scheduler = StepLR(optim,step_size=self.step_lr_size,
                                gamma=self.step_lr_gamma)
-        elif self.scheduler in ["cos"]:
+        elif self.scheduler_name in ["cos"]:
             CosAnnLR = th.optim.lr_scheduler.CosineAnnealingLR
             T0,Tmult = 1,1
             scheduler = CosAnnLR(optim,T0,Tmult)
-        elif self.scheduler in ["none"]:
+        elif self.scheduler_name in ["coswr"]:
+            lr_sched =th.optim.lr_scheduler
+            CosineAnnealingWarmRestarts = lr_sched.CosineAnnealingWarmRestarts
+            # print(self.coswr_T0,self.coswr_Tmult,self.coswr_eta_min)
+            scheduler = CosineAnnealingWarmRestarts(optim,self.coswr_T0,
+                                                    T_mult=self.coswr_Tmult,
+                                                    eta_min=self.coswr_eta_min)
+            scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
+        elif self.scheduler_name in ["none"]:
             StepLR = th.optim.lr_scheduler.StepLR
             scheduler = StepLR(optim,step_size=10**3,gamma=1.)
         else:
-            raise ValueError(f"Uknown scheduler [{self.scheduler}]")
+            raise ValueError(f"Uknown scheduler [{self.scheduler_name}]")
         return scheduler
 
     def training_step(self, batch, batch_idx):
