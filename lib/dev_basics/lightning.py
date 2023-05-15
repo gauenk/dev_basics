@@ -110,7 +110,7 @@ class LitModel(pl.LightningModule):
         lit_cfg = init_cfg(lit_cfg).lit
         for key,val in lit_cfg.items():
             setattr(self,key,val)
-        self.set_flow_epoch() # only for current exps; makes last 10 epochs with optical flow.
+        self.set_flow_epoch() # only for current exps; makes last 10 epochs with opt. flow.
         self.net = net
         self.sim_model = sim_model
         self.gen_loger = logging.getLogger('lightning')
@@ -177,7 +177,7 @@ class LitModel(pl.LightningModule):
             scheduler = MultiStepLR(optim,milestones=milestones,
                                     gamma=self.step_lr_gamma)
             scheduler = {"scheduler": scheduler, "interval": "epoch", "frequency": 1}
-        elif self.scheduler_name in ["coswr"]:
+        elif self.scheduler_name in ["coswr","cosw"]:
             lr_sched =th.optim.lr_scheduler
             CosineAnnealingWarmRestarts = lr_sched.CosineAnnealingWarmRestarts
             # print(self.coswr_T0,self.coswr_Tmult,self.coswr_eta_min)
