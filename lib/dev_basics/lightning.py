@@ -83,8 +83,10 @@ def lit_pairs():
              "scheduler_name":"default","step_lr_size":5,
              "step_lr_gamma":0.1,"flow_epoch":None,"flow_from_end":None,
              "use_wandb":False,
+             "ntype":"g","rate":-1,"sigma":-1,"sigma_min":-1,"sigma_max":-1,
              "optim_name":"adam","sgd_momentum":0.1,"sgd_dampening":0.1,
-             "coswr_T0":-1,"coswr_Tmult":1,"coswr_eta_min":1e-9}
+             "coswr_T0":-1,"coswr_Tmult":1,"coswr_eta_min":1e-9,
+             "step_lr_multisteps":"30-50"}
     return pairs
 
 def sim_pairs():
@@ -155,19 +157,26 @@ class LitModel(pl.LightningModule):
 
     def configure_scheduler(self,optim):
         if self.scheduler_name in ["default","exp_decay"]:
-            gamma = 1-math.exp(math.log(self.lr_final/self.lr_init)/self.nepochs)
+            gamma = math.exp(math.log(self.lr_final/self.lr_init)/self.nepochs)
             ExponentialLR = th.optim.lr_scheduler.ExponentialLR
             scheduler = ExponentialLR(optim,gamma=gamma) # (.995)^50 ~= .78
+            scheduler = {"scheduler": scheduler, "interval": "epoch", "frequency": 1}
         elif self.scheduler_name in ["step","steplr"]:
             args = (self.step_lr_size,self.step_lr_gamma)
-            print("[Scheduler]: StepLR(%d,%2.2f)" % args)
+            # print("[Scheduler]: StepLR(%d,%2.2f)" % args)
             StepLR = th.optim.lr_scheduler.StepLR
             scheduler = StepLR(optim,step_size=self.step_lr_size,
                                gamma=self.step_lr_gamma)
-        elif self.scheduler_name in ["cos"]:
+        elif self.scheduler_name in ["cosa"]:
             CosAnnLR = th.optim.lr_scheduler.CosineAnnealingLR
-            T0,Tmult = 1,1
-            scheduler = CosAnnLR(optim,T0,Tmult)
+            scheduler = CosAnnLR(optim,self.nepochs)
+            scheduler = {"scheduler": scheduler, "interval": "epoch", "frequency": 1}
+        elif self.scheduler_name in ["multi_step"]:
+            milestones = [int(x) for x in self.step_lr_multisteps.split("-")]
+            MultiStepLR = th.optim.lr_scheduler.MultiStepLR
+            scheduler = MultiStepLR(optim,milestones=milestones,
+                                    gamma=self.step_lr_gamma)
+            scheduler = {"scheduler": scheduler, "interval": "epoch", "frequency": 1}
         elif self.scheduler_name in ["coswr"]:
             lr_sched =th.optim.lr_scheduler
             CosineAnnealingWarmRestarts = lr_sched.CosineAnnealingWarmRestarts
@@ -222,8 +231,6 @@ class LitModel(pl.LightningModule):
         # -- terminal log --
         val_psnr = np.mean(compute_psnrs(denos,cleans,div=1.)).item()
         # val_ssim = np.mean(compute_ssims(denos,cleans,div=1.)).item() # too slow.
-
-        # self.gen_loger.info("train_psnr: %2.2f" % val_psnr)
         self.log("train_loss", loss.item(), on_step=True,
                  on_epoch=False, batch_size=self.batch_size)
         self.log("train_psnr", val_psnr, on_step=True,
@@ -267,6 +274,7 @@ class LitModel(pl.LightningModule):
 
         # -- denoise --
         noisy,clean = batch['noisy']/255.,batch['clean']/255.
+        val_index = batch['index'].cpu().item()
 
         # -- flow --
         fflow = batch['fflow']
@@ -298,6 +306,10 @@ class LitModel(pl.LightningModule):
                  on_epoch=True,batch_size=1,sync_dist=True)
         self.log("val_ssim", val_ssim, on_step=False,
                  on_epoch=True,batch_size=1,sync_dist=True)
+        self.log("val_index", val_index, on_step=False,
+                 on_epoch=True,batch_size=1,sync_dist=True)
+        self.log("global_step",self.global_step,on_step=False,
+                 on_epoch=True,batch_size=1)
         self.gen_loger.info("val_psnr: %2.2f" % val_psnr)
         self.gen_loger.info("val_ssim: %.3f" % val_ssim)
 
@@ -336,6 +348,7 @@ class LitModel(pl.LightningModule):
         self.log("test_index", index,on_step=True,on_epoch=False,batch_size=1)
         self.log("test_mem_res", mem_res, on_step=True, on_epoch=False, batch_size=1)
         self.log("test_mem_alloc", mem_alloc,on_step=True,on_epoch=False,batch_size=1)
+        self.log("global_step",self.global_step,on_step=True,on_epoch=False,batch_size=1)
         self.gen_loger.info("te_psnr: %2.2f" % psnr)
         self.gen_loger.info("te_ssim: %.3f" % ssim)
 
