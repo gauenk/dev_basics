@@ -134,7 +134,14 @@ class ExtractConfig():
     def extract_dict_of_econfigs(self,cfg,extract_dict): # internal api
         cfgs = edict()
         for name,econfig in extract_dict.items():
-            cfgs[name] = econfig.extract_config(cfg,new=True)
+
+            # -- 1.) extract --
+            if callable(econfig):
+                extact_config = econfig
+                cfgs[name] = extract_config(cfg,restrict=True)
+            else:
+                cfgs[name] = econfig.extract_config(cfg,new=True)
+
             # -- 2.) append to pairs --
             for key,val in econfig.pairs.items():
                 self.pairs[key] = val

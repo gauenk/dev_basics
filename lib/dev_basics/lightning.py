@@ -81,10 +81,12 @@ def lit_pairs():
              "lr_final":1e-8,"weight_decay":0.,
              "nepochs":0,"task":"denoising","uuid":"",
              "scheduler_name":"default","step_lr_size":5,
-             "step_lr_gamma":0.1,"flow_epoch":None,"flow_from_end":None,
-             "use_wandb":False,
-             "ntype":"g","rate":-1,"sigma":-1,"sigma_min":-1,"sigma_max":-1,
-             "optim_name":"adam","sgd_momentum":0.1,"sgd_dampening":0.1,
+             "step_lr_gamma":0.1,"flow_epoch":None,
+             "flow_from_end":None,"use_wandb":False,
+             "ntype":"g","rate":-1,"sigma":-1,
+             "sigma_min":-1,"sigma_max":-1,
+             "optim_name":"adam",
+             "sgd_momentum":0.1,"sgd_dampening":0.1,
              "coswr_T0":-1,"coswr_Tmult":1,"coswr_eta_min":1e-9,
              "step_lr_multisteps":"30-50"}
     return pairs

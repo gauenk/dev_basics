@@ -222,6 +222,7 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
         return ""
     chosen_ckpt = ""
     for epoch in range(nepochs):
+        # if epoch > 49: break
         ckpt_fn = checkpoint_dir / ("%s-epoch=%02d.ckpt" % (uuid,epoch))
         if ckpt_fn.exists(): chosen_ckpt = ckpt_fn
     assert ((chosen_ckpt == "") or chosen_ckpt.exists())
