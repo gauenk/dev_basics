@@ -136,14 +136,14 @@ class ExtractConfig():
         for name,econfig in extract_dict.items():
 
             # -- 1.) extract --
-            if callable(econfig):
-                extact_config = econfig
-                cfgs[name] = extract_config(cfg,restrict=True)
-            else:
+            if isinstance(econfig,ExtractConfig):
                 cfgs[name] = econfig.extract_config(cfg,new=True)
+            else:
+                extract_config = econfig
+                cfgs[name] = extract_config(cfg,restrict=True)
 
             # -- 2.) append to pairs --
-            for key,val in econfig.pairs.items():
+            for key,val in cfgs[name].items():
                 self.pairs[key] = val
         return cfgs
 
