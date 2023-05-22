@@ -173,6 +173,11 @@ class LitModel(pl.LightningModule):
             CosAnnLR = th.optim.lr_scheduler.CosineAnnealingLR
             scheduler = CosAnnLR(optim,self.nepochs)
             scheduler = {"scheduler": scheduler, "interval": "epoch", "frequency": 1}
+        elif self.scheduler_name in ["cosa_step"]:
+            nsteps = self.num_steps()
+            CosAnnLR = th.optim.lr_scheduler.CosineAnnealingLR
+            scheduler = CosAnnLR(optim,nsteps)
+            scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
         elif self.scheduler_name in ["multi_step"]:
             milestones = [int(x) for x in self.step_lr_multisteps.split("-")]
             MultiStepLR = th.optim.lr_scheduler.MultiStepLR
@@ -237,7 +242,7 @@ class LitModel(pl.LightningModule):
                  on_epoch=False, batch_size=self.batch_size)
         self.log("train_psnr", val_psnr, on_step=True,
                  on_epoch=False, batch_size=self.batch_size)
-        lr = self.optimizers().param_groups[-1]['lr']
+        lr = self.optimizers()._optimizer.param_groups[-1]['lr']
         self.log("lr", lr, on_step=True,
                  on_epoch=False, batch_size=self.batch_size)
         self.log("global_step", self.global_step, on_step=True,
@@ -363,6 +368,17 @@ class LitModel(pl.LightningModule):
         results.test_mem_res = mem_res
         results.test_index = index#.cpu().numpy().item()
         return results
+
+    def num_steps(self) -> int:
+        """Get number of steps"""
+        # Accessing _data_source is flaky and might break
+        dataset = self.trainer.fit_loop._data_source.dataloader()
+        dataset_size = len(dataset)
+        num_devices = max(1, self.trainer.num_devices)
+        acc = self.trainer.accumulate_grad_batches
+        num_steps = dataset_size * self.trainer.max_epochs // (acc * num_devices)
+        return num_steps
+
 
 class MetricsCallback(Callback):
     """PyTorch Lightning metric callback."""
