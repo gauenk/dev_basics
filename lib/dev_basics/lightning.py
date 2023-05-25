@@ -232,10 +232,6 @@ class LitModel(pl.LightningModule):
         cleans = th.cat(cleans)
 
         # -- log --
-        self.log("train_loss", loss.item(), on_step=True,
-                 on_epoch=False,batch_size=self.batch_size)
-
-        # -- terminal log --
         val_psnr = np.mean(compute_psnrs(denos,cleans,div=1.)).item()
         # val_ssim = np.mean(compute_ssims(denos,cleans,div=1.)).item() # too slow.
         self.log("train_loss", loss.item(), on_step=True,

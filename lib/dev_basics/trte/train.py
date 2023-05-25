@@ -125,7 +125,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -- set-up --
     print("PID: ",os.getpid())
     set_seed(cfgs.tr.seed)
-    NODE_RANK = int(os.environ.get('NODE_RANK', 0))
+    NODE_RANK = int(os.environ.get('LOCAL_RANK', 0))
     cfgs.tr.use_wandb = cfgs.tr.use_wandb and (NODE_RANK==0)
 
     # -- create timer --
