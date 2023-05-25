@@ -119,6 +119,9 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     sim = getattr(sim_module,cfgs.sim.load_fxn)(cfgs.sim)
     model = lit_module.LitModel(cfgs.lit,net,sim)
 
+    # -- init torch --
+    th.set_float32_matmul_precision('medium')
+
     # -- set-up --
     print("PID: ",os.getpid())
     set_seed(cfgs.tr.seed)
@@ -316,7 +319,7 @@ class SaveCheckpointList(Callback):
             self.save_epochs = [int(s) for s in save_epochs.split("-")]
             self.save_type = "list"
         elif save_epochs.startswith("by"):
-            self.save_interval = int(save_epoch.split("by")[-1])
+            self.save_interval = int(save_epochs.split("by")[-1])
             self.save_type = "interval"
 
     def on_train_epoch_end(self, trainer, pl_module):

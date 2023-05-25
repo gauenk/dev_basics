@@ -11,6 +11,17 @@ import argparse
 import subprocess
 from pathlib import Path
 from easydict import EasyDict as edict
+import socket
+
+hostname = socket.gethostname()
+if "anvil" in hostname:
+    default_account = "gpu-debug"
+    default_time = "0-0:10:00"
+    default_gpus = 1
+else:
+    default_account = "standby"
+    default_time = "0-4:00:00"
+    default_gpus = 1
 
 def parse():
     desc = 'Launch a single python command using sbatch',
@@ -20,13 +31,13 @@ def parse():
         epilog = 'Happy Hacking')
     parser.add_argument("launch_cmd",type=str,
                         help="The command to launch with sbatch")
-    parser.add_argument("--account",type=str,default="standby",
+    parser.add_argument("--account",type=str,default=default_account,
                         help="The account to launch")
-    parser.add_argument("-T","--time",type=str,default="0-4:00:00",
+    parser.add_argument("-T","--time",type=str,default=default_time,
                         help="The time limit of the proc")
     parser.add_argument("--ncpus",type=int,default=1,
                         help="The number of cpus to launch.")
-    parser.add_argument("--ngpus",type=int,default=1,
+    parser.add_argument("--ngpus",type=int,default=default_gpus,
                         help="The number of gpus to launch.")
     parser.add_argument("-O","--outfile",type=str,default="sbatch_cmd.txt",
                         help="The output file.")
@@ -66,7 +77,10 @@ def get_tmpdir():
 
 def create_content(args,cwd):
     cmd = "#!/bin/sh -l\n"
-    cmd += "#SBATCH -A %s\n" % args.account
+    if "anvil" in hostname:
+        cmd += "#SBATCH -p %s\n" % args.account
+    else:
+        cmd += "#SBATCH -A %s\n" % args.account
     cmd += "#SBATCH --nodes 1\n"
     cmd += "#SBATCH --time %s\n" % args.time
     cmd += "#SBATCH --cpus-per-task %d\n" % args.ncpus
