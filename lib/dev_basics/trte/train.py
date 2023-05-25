@@ -130,8 +130,10 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     timer = ExpTimer()
 
     # -- paths --
-    subdir = cfgs.tr.subdir
-    root = Path(cfgs.tr.root) / "output" / "train" / subdir
+    if cfgs.tr.subdir != "":
+        name = cfgs.tr.subdir
+    name = cfgs.tr.name
+    root = Path(cfgs.tr.root) / "output" / "train" / name
     log_dir = root / "logs" / str(cfgs.tr.uuid)
     pik_dir = root / "pickles" / str(cfgs.tr.uuid)
     chkpt_dir = root / "checkpoints" / str(cfgs.tr.uuid)
@@ -222,7 +224,8 @@ def init_paths(log_dir,pik_dir,chkpt_dir):
 def get_checkpoint(checkpoint_dir,uuid,nepochs):
     checkpoint_dir = Path(checkpoint_dir)
     if not checkpoint_dir.exists():
-        return ""
+        checkpoint_dir.mkdir(parents=True)
+        return None
     chosen_ckpt = ""
     for epoch in range(nepochs):
         # if epoch > 49: break
@@ -231,8 +234,10 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
     assert ((chosen_ckpt == "") or chosen_ckpt.exists())
     if chosen_ckpt != "":
         print("Resuming training from {%s}" % (str(chosen_ckpt)))
-    return str(chosen_ckpt)
-
+        chosen_ckpt = str(chosen_ckpt)
+    else:
+        chosen_ckpt = None
+    return chosen_ckpt
 
 def create_trainer(cfgs,log_dir,chkpt_dir):
     logger = get_logger(log_dir,"train",cfgs.tr.use_wandb)

@@ -163,7 +163,7 @@ def summary_loaded(model,vshape,with_flows=True):
         flows.bflow = th.randn(fshape).to("cuda:0")
         model.forward = partial(model.forward,flows=flows)
     summ = th_summary(model, input_size=vshape, verbose=0)
-    res.total_params = summ.total_params
+    res.total_params = summ.total_params / 1e6
     res.trainable_params = summ.trainable_params / 1e6
     res.macs = summ.total_mult_adds / 1e9
     res.fwdbwd_mem = summ.total_output_bytes / 1e9
