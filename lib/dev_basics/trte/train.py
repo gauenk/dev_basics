@@ -311,16 +311,25 @@ class SaveCheckpointList(Callback):
         self.uuid = uuid
         self.outdir = outdir
         self.save_epochs = []
+        self.save_interval = -1
         if "-" in save_epochs:
             self.save_epochs = [int(s) for s in save_epochs.split("-")]
+            self.save_type = "list"
+        elif save_epochs.startswith("by"):
+            self.save_interval = int(save_epoch.split("by")[-1])
+            self.save_type = "interval"
 
     def on_train_epoch_end(self, trainer, pl_module):
         uuid = self.uuid
         epoch = trainer.current_epoch
-        if not(epoch in self.save_epochs): return
-        path = Path(self.outdir / ("%s-save-epoch=%02d.ckpt" % (uuid,epoch)))
-        trainer.save_checkpoint(str(path))
-
+        if self.save_type == "list":
+            if not(epoch in self.save_epochs): return
+            path = Path(self.outdir / ("%s-save-epoch=%02d.ckpt" % (uuid,epoch)))
+            trainer.save_checkpoint(str(path))
+        elif self.save_type == "interval":
+            if not((epoch+1) % self.save_interval == 0): return
+            path = Path(self.outdir / ("%s-save-epoch=%02d.ckpt" % (uuid,epoch)))
+            trainer.save_checkpoint(str(path))
 
 class MetricsCallback(Callback):
     """PyTorch Lightning metric callback."""
@@ -361,16 +370,16 @@ class MetricsCallback(Callback):
         self._accumulate_results(each_me)
 
     def on_train_batch_end(self, trainer, pl_module, outs,
-                           batch, batch_idx, dl_idx):
+                           batch, batch_idx, dataloader_idx=0):
         each_me = copy.deepcopy(trainer.callback_metrics)
         self._accumulate_results(each_me)
 
-
     def on_validation_batch_end(self, trainer, pl_module, outs,
-                                batch, batch_idx, dl_idx):
+                                batch, batch_idx, dataloader_idx=0):
         each_me = copy.deepcopy(trainer.callback_metrics)
         self._accumulate_results(each_me)
 
     def on_test_batch_end(self, trainer, pl_module, outs,
-                          batch, batch_idx, dl_idx):
+                          batch, batch_idx, dataloader_idx=0):
         self._accumulate_results(outs)
+

@@ -62,7 +62,7 @@ import pytorch_lightning as pl
 from pytorch_lightning import Callback
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 # import torch
 # torch.autograd.set_detect_anomaly(True)
@@ -378,58 +378,6 @@ class LitModel(pl.LightningModule):
         acc = self.trainer.accumulate_grad_batches
         num_steps = dataset_size * self.trainer.max_epochs // (acc * num_devices)
         return num_steps
-
-
-class MetricsCallback(Callback):
-    """PyTorch Lightning metric callback."""
-
-    def __init__(self):
-        super().__init__()
-        self.metrics = {}
-
-    def _accumulate_results(self,each_me):
-        for key,val in each_me.items():
-            if not(key in self.metrics):
-                self.metrics[key] = []
-            if hasattr(val,"ndim"):
-                ndim = val.ndim
-                val = val.cpu().numpy().item()
-            self.metrics[key].append(val)
-
-    @rank_zero_only
-    def log_metrics(self, metrics, step):
-        # metrics is a dictionary of metric names and values
-        # your code to record metrics goes here
-        print("logging metrics: ",metrics,step)
-
-    def on_train_epoch_end(self, trainer, pl_module):
-        each_me = copy.deepcopy(trainer.callback_metrics)
-        self._accumulate_results(each_me)
-
-    def on_validation_epoch_end(self, trainer, pl_module):
-        each_me = copy.deepcopy(trainer.callback_metrics)
-        self._accumulate_results(each_me)
-
-    def on_test_epoch_end(self, trainer, pl_module):
-        each_me = copy.deepcopy(trainer.callback_metrics)
-        self._accumulate_results(each_me)
-
-    def on_train_batch_end(self, trainer, pl_module, outs,
-                           batch, batch_idx, dl_idx):
-        each_me = copy.deepcopy(trainer.callback_metrics)
-        self._accumulate_results(each_me)
-
-
-    def on_validation_batch_end(self, trainer, pl_module, outs,
-                                batch, batch_idx, dl_idx):
-        each_me = copy.deepcopy(trainer.callback_metrics)
-        self._accumulate_results(each_me)
-
-    def on_test_batch_end(self, trainer, pl_module, outs,
-                          batch, batch_idx, dl_idx):
-        self._accumulate_results(outs)
-
-
 
 def remove_lightning_load_state(state):
     names = list(state.keys())
