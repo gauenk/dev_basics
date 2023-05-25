@@ -54,7 +54,7 @@ def train_pairs():
              "persistent_workers":True,
              "rand_order_tr":True,
              "gradient_clip_algorithm":"norm",
-             "gradient_clip_val":0.5,
+             "gradient_clip_val":0.0,
              "index_skip_val":5,
              "root":".","seed":123,
              "accumulate_grad_batches":1,
