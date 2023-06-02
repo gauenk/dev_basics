@@ -131,8 +131,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -- set-up --
     print("PID: ",os.getpid())
     set_seed(cfgs.tr.seed)
-    NODE_RANK = int(os.environ.get('LOCAL_RANK', 0))
-    cfgs.tr.use_wandb = cfgs.tr.use_wandb and (NODE_RANK==0)
+    cfgs.tr.use_wandb = cfgs.tr.use_wandb
 
     # -- create timer --
     timer = ExpTimer()
@@ -169,7 +168,6 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     data,loaders = data_hub.sets.load(cfg)
     print("Num Training Vids: ",len(data[dset_tr]))
     print("Log Dir: ",log_dir)
-
 
     # -- pytorch_lightning training --
     trainer,chkpt_callback = create_trainer(cfgs,log_dir,chkpt_dir)
@@ -275,8 +273,11 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
     return trainer,checkpoint_callback
 
 def get_logger(log_dir,name,use_wandb):
-    if use_wandb and WANDB_AVAIL:
+    NODE_RANK = int(os.environ.get('LOCAL_RANK', 0))
+    if use_wandb and WANDB_AVAIL and (NODE_RANK == 0):
         logger = WandbLogger(name=name)
+    elif use_wandb and (NODE_RANK != 0):
+        logger = None
     else:
         logger = CSVLogger(log_dir,name=name,flush_logs_every_n_steps=1)
     print(logger)

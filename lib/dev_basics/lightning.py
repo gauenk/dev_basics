@@ -158,6 +158,7 @@ class LitModel(pl.LightningModule):
         return [optim], [sched]
 
     def configure_scheduler(self,optim):
+        print("self.scheduler_name: ",self.scheduler_name)
         if self.scheduler_name in ["default","exp_decay"]:
             gamma = math.exp(math.log(self.lr_final/self.lr_init)/self.nepochs)
             ExponentialLR = th.optim.lr_scheduler.ExponentialLR
@@ -174,6 +175,8 @@ class LitModel(pl.LightningModule):
             scheduler = CosAnnLR(optim,self.nepochs)
             scheduler = {"scheduler": scheduler, "interval": "epoch", "frequency": 1}
         elif self.scheduler_name in ["cosa_step"]:
+            print("cosa_step: ",self.scheduler_name)
+            print("num_steps: ",num_steps)
             nsteps = self.num_steps()
             CosAnnLR = th.optim.lr_scheduler.CosineAnnealingLR
             scheduler = CosAnnLR(optim,nsteps)
