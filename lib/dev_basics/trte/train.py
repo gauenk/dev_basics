@@ -122,6 +122,12 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -- init torch --
     th.set_float32_matmul_precision('medium')
 
+    # -- net summary --
+    vshape = (4,4,3,256,256)
+    res = bench.summary_loaded(net,vshape,with_flows=True)
+    print(res)
+    return
+
     # -- set-up --
     print("PID: ",os.getpid())
     set_seed(cfgs.tr.seed)

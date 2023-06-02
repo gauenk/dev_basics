@@ -168,6 +168,10 @@ def summary_loaded(model,vshape,with_flows=True):
     res.macs = summ.total_mult_adds / 1e9
     res.fwdbwd_mem = summ.total_output_bytes / 1e9
 
+    res.total_params = sum(p.numel() for p in model.parameters())/ 1e6
+    res.trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    res.trainable_params = res.trainable_params/1e6
+
     return res
 
 
