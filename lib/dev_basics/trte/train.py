@@ -27,7 +27,8 @@ from pytorch_lightning.callbacks import StochasticWeightAveraging
 
 # -- ddp --
 import time
-from pytorch_lightning.utilities.distributed import rank_zero_only
+# from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities import rank_zero_only
 
 # -- wandb --
 WANDB_AVAIL = False
@@ -40,7 +41,7 @@ except:
 
 # -- dev basics --
 from .. import flow
-from ..utils.misc import set_seed
+from ..utils.misc import set_seed,optional
 from ..utils.misc import write_pickle
 from ..utils.timer import ExpTimer,TimeIt
 from ..utils.metrics import compute_psnrs,compute_ssims
@@ -177,10 +178,26 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     #
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
+    def get_mixed_data(cfg,dset_val):
+        cfg_c = dcopy(cfg)
+        data,loaders = data_hub.sets.load(cfg_c)
+        cfg["batch_size_val"] = 1
+        cfg["nsamples_val"] = 30
+        keys = ["dname","nsamples_val","nframes","fstride","isize","ntype","sigma"]
+        for key in keys:
+            default = optional(cfg,key,None)
+            cfg_c[key] = optional(cfg,"%s_at_val" % key,default)
+            assert not(cfg_c[key] is None),"[%s] Must not be none." % key
+        data_val,loaders_val = data_hub.sets.load(cfg_c)
+        data['val'] = data_val[dset_val]
+        loaders['val'] = loaders_val[dset_val]
+        return data,loaders
+
     # -- data --
     dset_tr = cfgs.tr.dset_tr
     dset_val = cfgs.tr.dset_val
-    data,loaders = data_hub.sets.load(cfg)
+    data,loaders = get_mixed_data(cfg,dset_val)
+    # data,loaders = data_hub.sets.load(cfg)
     print("Num Training Vids: ",len(data[dset_tr]))
     print("Log Dir: ",log_dir)
 
@@ -317,10 +334,19 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
 
     # -- load dataset with testing mods isizes --
     cfg_clone = copy.deepcopy(cfg)
-    cfg_clone.nsamples_tr = cfg.nsamples_at_testing
-    cfg_clone.nsamples_val = cfg.nsamples_at_testing
-    cfg_clone.nsamples_te = cfg.nsamples_at_testing
+    cfg_clone.dname = optional(cfg,"dname_at_testing",cfg.dname)
+    cfg_clone.nframes = optional(cfg,"nframes_at_testing",5)
+    cfg_clone.nsamples_tr = optional(cfg,"nsamples_at_testing",0)
+    cfg_clone.nsamples_val = optional(cfg,"nsamples_at_testing",0)
+    cfg_clone.nsamples_te = optional(cfg,"nsamples_at_testing",0)
+    cfg_clone.isize = optional(cfg,"isize_at_testing",0)
+    cfg_clone.batch_size = 1
+    cfg_clone.batch_size_tr = 1
+    cfg_clone.batch_size_val = 1
+    cfg_clone.batch_size_te = 1
     data,loaders = data_hub.sets.load(cfg_clone)
+    print("len(data.val): ",len(data.val))
+    print("len(loaders.val): ",len(loaders.val))
 
     # -- set model's isize --
     model.isize = cfg.isize
@@ -330,8 +356,9 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
     logger = get_logger(log_dir,"val",cfg.use_wandb)
     ndevices_local = int(cfg.ndevices/cfg.num_nodes)
     trainer = pl.Trainer(accelerator="gpu",
-                         devices=ndevices_local,precision=32,
-                         num_nodes=cfg.num_nodes,
+                         devices=1,#ndevices_local,
+                         precision=32,
+                         num_nodes=1,#cfg.num_nodes,
                          limit_train_batches=1.,
                          max_epochs=3,log_every_n_steps=1,
                          callbacks=[val_report],logger=logger)

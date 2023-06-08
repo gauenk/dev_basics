@@ -147,6 +147,9 @@ class LitModel(pl.LightningModule):
         if self.optim_name == "adam":
             optim = th.optim.Adam(self.parameters(),lr=self.lr_init,
                                   weight_decay=self.weight_decay)
+        elif self.optim_name == "adamw":
+            optim = th.optim.AdamW(self.parameters(),lr=self.lr_init,
+                                   weight_decay=self.weight_decay)
         elif self.optim_name == "sgd":
             optim = th.optim.SGD(self.parameters(),lr=self.lr_init,
                                  weight_decay=self.weight_decay,
