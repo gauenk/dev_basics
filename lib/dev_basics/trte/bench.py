@@ -164,9 +164,11 @@ def summary_loaded(model,vshape,with_flows=True):
         model.forward = partial(model.forward,flows=flows)
     summ = th_summary(model, input_size=vshape, verbose=0)
     res.total_params = summ.total_params / 1e6
-    res.trainable_params = summ.trainable_params / 1e6
+    # res.trainable_params = summ.trainable_params / 1e6
     res.macs = summ.total_mult_adds / 1e9
     res.fwdbwd_mem = summ.total_output_bytes / 1e9
+    res.trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    res.trainable_params = res.trainable_params/1e6
 
     res.total_params = sum(p.numel() for p in model.parameters())/ 1e6
     res.trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

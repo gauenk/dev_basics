@@ -24,7 +24,11 @@ from pytorch_lightning import Callback
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import StochasticWeightAveraging
+
+# -- ddp --
+import time
 # from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities import rank_zero_only
 
 # -- wandb --
 WANDB_AVAIL = False
@@ -37,7 +41,7 @@ except:
 
 # -- dev basics --
 from .. import flow
-from ..utils.misc import set_seed
+from ..utils.misc import set_seed,optional
 from ..utils.misc import write_pickle
 from ..utils.timer import ExpTimer,TimeIt
 from ..utils.metrics import compute_psnrs,compute_ssims
@@ -59,6 +63,7 @@ def train_pairs():
              "root":".","seed":123,
              "accumulate_grad_batches":1,
              "ndevices":1,
+             "num_nodes":2,
              "precision":32,
              "limit_train_batches":1.,
              "nepochs":30,
@@ -114,8 +119,16 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     if cfgs.tr.gradient_clip_val <= 0:
         cfgs.tr.gradient_clip_val = None
 
+    # -- setup process --
+    print("PID: ",os.getpid())
+    th.set_float32_matmul_precision('medium')
+    set_seed(cfgs.tr.seed)
+
     # -- init model/simulator/lightning --
-    net = net_module.load_model(cfgs.net)
+    device = "cuda"
+    print(th.cuda.current_device())
+    # th.cuda.device(device)
+    net = net_module.load_model(cfgs.net).to(device)
     sim = getattr(sim_module,cfgs.sim.load_fxn)(cfgs.sim)
     model = lit_module.LitModel(cfgs.lit,net,sim)
 
@@ -144,7 +157,10 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     log_dir = root / "logs" / str(cfgs.tr.uuid)
     pik_dir = root / "pickles" / str(cfgs.tr.uuid)
     chkpt_dir = root / "checkpoints" / str(cfgs.tr.uuid)
-    init_paths(log_dir,pik_dir,chkpt_dir)
+    if rank_zero_only.rank == 0:
+        init_paths(log_dir,pik_dir,chkpt_dir)
+    else:
+        time.sleep(5)
 
     # -- copy previous step checkpoint --
     # input: previous step's uuid
@@ -162,10 +178,26 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     #
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
+    def get_mixed_data(cfg,dset_val):
+        cfg_c = dcopy(cfg)
+        data,loaders = data_hub.sets.load(cfg_c)
+        cfg["batch_size_val"] = 1
+        cfg["nsamples_val"] = 30
+        keys = ["dname","nsamples_val","nframes","fstride","isize","ntype","sigma"]
+        for key in keys:
+            default = optional(cfg,key,None)
+            cfg_c[key] = optional(cfg,"%s_at_val" % key,default)
+            assert not(cfg_c[key] is None),"[%s] Must not be none." % key
+        data_val,loaders_val = data_hub.sets.load(cfg_c)
+        data['val'] = data_val[dset_val]
+        loaders['val'] = loaders_val[dset_val]
+        return data,loaders
+
     # -- data --
     dset_tr = cfgs.tr.dset_tr
     dset_val = cfgs.tr.dset_val
-    data,loaders = data_hub.sets.load(cfg)
+    data,loaders = get_mixed_data(cfg,dset_val)
+    # data,loaders = data_hub.sets.load(cfg)
     print("Num Training Vids: ",len(data[dset_tr]))
     print("Log Dir: ",log_dir)
 
@@ -227,11 +259,19 @@ def init_paths(log_dir,pik_dir,chkpt_dir):
     if not pik_dir.exists():
         pik_dir.mkdir(parents=True)
 
+def wait_checkpoint_exists(ckpt_dir):
+    ckpt_dir = Path(ckpt_dir)
+    while not(ckpt_dir.exists()):
+        time.sleep(1)
+
 def get_checkpoint(checkpoint_dir,uuid,nepochs):
     checkpoint_dir = Path(checkpoint_dir)
-    if not checkpoint_dir.exists():
-        checkpoint_dir.mkdir(parents=True)
-        return None
+    if rank_zero_only.rank > 0:
+        wait_checkpoint_exists(checkpoint_dir)
+    else:
+        if not checkpoint_dir.exists():
+            checkpoint_dir.mkdir(parents=True)
+            return None
     chosen_ckpt = ""
     for epoch in range(nepochs):
         # if epoch > 49: break
@@ -260,7 +300,11 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
         swa_callback = StochasticWeightAveraging(swa_lrs=cfgs.tr.lr_init,
                                 swa_epoch_start=cfgs.tr.swa_epoch_start)
         callbacks += [swa_callback]
-    trainer = pl.Trainer(accelerator="gpu",devices=cfgs.tr.ndevices,precision=32,
+    ndevices_local = int(cfgs.tr.ndevices/cfgs.tr.num_nodes)
+    print(cfgs.tr.num_nodes,cfgs.tr.ndevices,ndevices_local)
+    trainer = pl.Trainer(accelerator="gpu",
+                         num_nodes=cfgs.tr.num_nodes,
+                         devices=ndevices_local,precision=32,
                          accumulate_grad_batches=cfgs.tr.accumulate_grad_batches,
                          limit_train_batches=cfgs.tr.limit_train_batches,
                          limit_val_batches=1.,max_epochs=cfgs.tr.nepochs,
@@ -273,10 +317,12 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
     return trainer,checkpoint_callback
 
 def get_logger(log_dir,name,use_wandb):
-    NODE_RANK = int(os.environ.get('LOCAL_RANK', 0))
-    if use_wandb and WANDB_AVAIL and (NODE_RANK == 0):
+    LOCAL_RANK = int(os.environ.get('LOCAL_RANK', 0))
+    GLOBAL_RANK = int(os.environ.get('GLOBAL_RANK', 0))
+    NODE_RANK_0 = (LOCAL_RANK == 0) and (GLOBAL_RANK == 0)
+    if use_wandb and WANDB_AVAIL and rank_zero_only.rank == 0:
         logger = WandbLogger(name=name)
-    elif use_wandb and (NODE_RANK != 0):
+    elif use_wandb and not( rank_zero_only.rank == 0):
         logger = None
     else:
         logger = CSVLogger(log_dir,name=name,flush_logs_every_n_steps=1)
@@ -288,10 +334,19 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
 
     # -- load dataset with testing mods isizes --
     cfg_clone = copy.deepcopy(cfg)
-    cfg_clone.nsamples_tr = cfg.nsamples_at_testing
-    cfg_clone.nsamples_val = cfg.nsamples_at_testing
-    cfg_clone.nsamples_te = cfg.nsamples_at_testing
+    cfg_clone.dname = optional(cfg,"dname_at_testing",cfg.dname)
+    cfg_clone.nframes = optional(cfg,"nframes_at_testing",5)
+    cfg_clone.nsamples_tr = optional(cfg,"nsamples_at_testing",0)
+    cfg_clone.nsamples_val = optional(cfg,"nsamples_at_testing",0)
+    cfg_clone.nsamples_te = optional(cfg,"nsamples_at_testing",0)
+    cfg_clone.isize = optional(cfg,"isize_at_testing",0)
+    cfg_clone.batch_size = 1
+    cfg_clone.batch_size_tr = 1
+    cfg_clone.batch_size_val = 1
+    cfg_clone.batch_size_te = 1
     data,loaders = data_hub.sets.load(cfg_clone)
+    print("len(data.val): ",len(data.val))
+    print("len(loaders.val): ",len(loaders.val))
 
     # -- set model's isize --
     model.isize = cfg.isize
@@ -299,7 +354,11 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
     # -- setup --
     val_report = MetricsCallback()
     logger = get_logger(log_dir,"val",cfg.use_wandb)
-    trainer = pl.Trainer(accelerator="gpu",devices=1,precision=32,
+    ndevices_local = int(cfg.ndevices/cfg.num_nodes)
+    trainer = pl.Trainer(accelerator="gpu",
+                         devices=1,#ndevices_local,
+                         precision=32,
+                         num_nodes=1,#cfg.num_nodes,
                          limit_train_batches=1.,
                          max_epochs=3,log_every_n_steps=1,
                          callbacks=[val_report],logger=logger)
