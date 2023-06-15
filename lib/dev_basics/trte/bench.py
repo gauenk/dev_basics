@@ -31,7 +31,7 @@ def run(cfg):
 
     # -- load --
     vid = load_sample(cfg)
-    model = load_model(cfg)
+    model = load_model(cfg).to("cuda")
 
     return run_loaded(model,vid,run_flows=cfg.flow,with_flows=True)
 
@@ -96,7 +96,7 @@ def run_fwd(cfg):
 
     # -- load --
     vid = load_sample(cfg)
-    model = load_model(cfg)
+    model = load_model(cfg).to("cuda")
     flows = flow.orun(vid,cfg.flow)
     vid = vid[0]
 
@@ -136,7 +136,7 @@ def load_sample(cfg):
     return sample['noisy'][None,:].to(device)
 
 def print_summary(cfg,vshape,with_flows=True):
-    model = load_model(cfg)
+    model = load_model(cfg).to("cuda")
     flows = edict()
     fshape = (vshape[0],vshape[1],2,vshape[-2],vshape[-1])
     flows.fflow = th.randn(fshape).to("cuda:0")
@@ -146,7 +146,7 @@ def print_summary(cfg,vshape,with_flows=True):
     th_summary(model, input_size=vshape)
 
 def summary(cfg,vshape,with_flows=True):
-    model = load_model(cfg)
+    model = load_model(cfg).to("cuda")
     return summary_loaded(model,vshape,with_flows)
 
 def summary_loaded(model,vshape,with_flows=True):
