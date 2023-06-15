@@ -39,6 +39,8 @@ def parse():
                         help="The number of cpus to launch.")
     parser.add_argument("--ngpus",type=int,default=default_gpus,
                         help="The number of gpus to launch.")
+    parser.add_argument("-C",type=str,default="A100|a100|a30|A30",
+                        help="Constraints")
     parser.add_argument("-O","--outfile",type=str,default="sbatch_cmd.txt",
                         help="The output file.")
     args = parser.parse_args()
@@ -81,6 +83,8 @@ def create_content(args,cwd):
         cmd += "#SBATCH -p %s\n" % args.account
     else:
         cmd += "#SBATCH -A %s\n" % args.account
+    if args.C != "":
+        cmd += "#SBATCH -C %s\n" % args.C
     cmd += "#SBATCH --nodes 1\n"
     cmd += "#SBATCH --time %s\n" % args.time
     cmd += "#SBATCH --cpus-per-task %d\n" % args.ncpus
