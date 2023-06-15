@@ -5,6 +5,20 @@ import numpy as np
 import torch as th
 from easydict import EasyDict as edict
 
+# -- estimate sigma --
+from skimage.restoration import estimate_sigma as estimate_sigma_sk
+
+def estimate_sigma(vid):
+    if vid.ndim == 5:
+        vid = vid[0]
+    if vid.shape[1] == 3:
+        vid = vid.cpu().clone()
+        color.rgb2yuv(vid)
+    vid_np = vid.cpu().numpy()
+    vid_np = vid_np[:,[0]] # Y only
+    sigma = estimate_sigma_sk(vid_np,channel_axis=1)[0]
+    return sigma
+
 def optional(pydict,key,default):
     if pydict is None: return default
     elif key in pydict: return pydict[key]
