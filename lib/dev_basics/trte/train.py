@@ -27,7 +27,11 @@ from pytorch_lightning.callbacks import StochasticWeightAveraging
 
 # -- ddp --
 import time
-from pytorch_lightning.utilities.distributed import rank_zero_only
+# from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities import rank_zero_only
+
+# -- bench --
+from . import bench
 
 # -- wandb --
 WANDB_AVAIL = False
@@ -62,7 +66,7 @@ def train_pairs():
              "root":".","seed":123,
              "accumulate_grad_batches":1,
              "ndevices":1,
-             "num_nodes":2,
+             "num_nodes":1,
              "precision":32,
              "limit_train_batches":1.,
              "nepochs":30,
@@ -134,11 +138,13 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -- init torch --
     th.set_float32_matmul_precision('medium')
 
-    # # -- net summary --
+    # -- net summary --
     # vshape = (4,4,3,256,256)
     # res = bench.summary_loaded(net,vshape,with_flows=True)
+    # print("-="*25+"-")
+    # print("Network Summary for %s" % str(vshape))
     # print(res)
-    # return
+    # print("-="*25+"-")
 
     # -- set-up --
     print("PID: ",os.getpid())
