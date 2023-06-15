@@ -89,7 +89,7 @@ def run(cfg):
     burn_in = tcfg.burn_in
 
     # -- load model --
-    model = module.load_model(model_cfg)
+    model = module.load_model(model_cfg).to("cuda")
 
     # -- data --
     imax = 255.
