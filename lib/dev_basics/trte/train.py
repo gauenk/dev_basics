@@ -30,6 +30,9 @@ import time
 # from pytorch_lightning.utilities.distributed import rank_zero_only
 from pytorch_lightning.utilities import rank_zero_only
 
+# -- bench --
+from . import bench
+
 # -- wandb --
 WANDB_AVAIL = False
 try:
@@ -138,8 +141,10 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -- net summary --
     # vshape = (4,4,3,256,256)
     # res = bench.summary_loaded(net,vshape,with_flows=True)
+    # print("-="*25+"-")
+    # print("Network Summary for %s" % str(vshape))
     # print(res)
-    # return
+    # print("-="*25+"-")
 
     # -- set-up --
     print("PID: ",os.getpid())
@@ -181,8 +186,8 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     def get_mixed_data(cfg,dset_val):
         cfg_c = dcopy(cfg)
         data,loaders = data_hub.sets.load(cfg_c)
-        cfg["batch_size_val"] = 1
-        cfg["nsamples_val"] = 30
+        cfg_c["batch_size_val"] = 1
+        cfg_c["nsamples_val"] = 100
         pairs = {"dname":None,"nsamples_val":None,
                  "nframes":5,"fstride":1,"isize":None,
                  "ntype":None,"sigma":30}
