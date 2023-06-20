@@ -63,7 +63,7 @@ def train_pairs():
              "root":".","seed":123,
              "accumulate_grad_batches":1,
              "ndevices":1,
-             "num_nodes":2,
+             "num_nodes":1,
              "precision":32,
              "limit_train_batches":1.,
              "nepochs":30,
@@ -183,9 +183,11 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
         data,loaders = data_hub.sets.load(cfg_c)
         cfg["batch_size_val"] = 1
         cfg["nsamples_val"] = 30
-        keys = ["dname","nsamples_val","nframes","fstride","isize","ntype","sigma"]
-        for key in keys:
-            default = optional(cfg,key,None)
+        pairs = {"dname":None,"nsamples_val":None,
+                 "nframes":5,"fstride":1,"isize":None,
+                 "ntype":None,"sigma":30}
+        for key in pairs.keys():
+            default = optional(cfg,key,pairs[key])
             cfg_c[key] = optional(cfg,"%s_at_val" % key,default)
             assert not(cfg_c[key] is None),"[%s] Must not be none." % key
         data_val,loaders_val = data_hub.sets.load(cfg_c)
@@ -303,7 +305,7 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
     ndevices_local = int(cfgs.tr.ndevices/cfgs.tr.num_nodes)
     print(cfgs.tr.num_nodes,cfgs.tr.ndevices,ndevices_local)
     trainer = pl.Trainer(accelerator="gpu",
-                         num_nodes=cfgs.tr.num_nodes,
+                         # num_nodes=cfgs.tr.num_nodes,
                          devices=ndevices_local,precision=32,
                          accumulate_grad_batches=cfgs.tr.accumulate_grad_batches,
                          limit_train_batches=cfgs.tr.limit_train_batches,
@@ -339,7 +341,7 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
     cfg_clone.nsamples_tr = optional(cfg,"nsamples_at_testing",0)
     cfg_clone.nsamples_val = optional(cfg,"nsamples_at_testing",0)
     cfg_clone.nsamples_te = optional(cfg,"nsamples_at_testing",0)
-    cfg_clone.isize = optional(cfg,"isize_at_testing",0)
+    cfg_clone.isize = optional(cfg,"isize_at_testing",None)
     cfg_clone.batch_size = 1
     cfg_clone.batch_size_tr = 1
     cfg_clone.batch_size_val = 1
