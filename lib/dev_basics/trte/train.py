@@ -182,7 +182,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
         cfg_c = dcopy(cfg)
         data,loaders = data_hub.sets.load(cfg_c)
         cfg["batch_size_val"] = 1
-        cfg["nsamples_val"] = 30
+        cfg["nsamples_val"] = 100
         keys = ["dname","nsamples_val","nframes","fstride","isize","ntype","sigma"]
         for key in keys:
             default = optional(cfg,key,None)

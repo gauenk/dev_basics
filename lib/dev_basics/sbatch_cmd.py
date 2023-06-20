@@ -35,11 +35,11 @@ def parse():
                         help="The account to launch")
     parser.add_argument("-T","--time",type=str,default=default_time,
                         help="The time limit of the proc")
-    parser.add_argument("--ncpus",type=int,default=1,
+    parser.add_argument("--ncpus",type=int,default=4,
                         help="The number of cpus to launch.")
     parser.add_argument("--ngpus",type=int,default=default_gpus,
                         help="The number of gpus to launch.")
-    parser.add_argument("-C",type=str,default="A100|a100|a30|A30",
+    parser.add_argument("-C",type=str,default="A100|a100",
                         help="Constraints")
     parser.add_argument("-O","--outfile",type=str,default="sbatch_cmd.txt",
                         help="The output file.")
