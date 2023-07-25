@@ -118,6 +118,47 @@ def run_fwd(cfg):
 
     return results
 
+def run_fwd_vshape(model,vshape,run_flows=False,with_flows=False):
+
+    # -- timer/memer --
+    timer = ExpTimer()
+    memer = GpuMemer()
+
+    # -- get video --
+    vid = th.randn(vshape).to("cuda:0")
+
+    # -- run flows --
+    flows = flow.orun(vid,False) # init
+    with TimeIt(timer,"flows"):
+        with MemIt(memer,"flows"):
+            flows = flow.orun(vid,run_flows)
+
+    # -- def forward --
+    def forward(_vid):
+        if with_flows:
+            return model(_vid,flows=flows)
+        else:
+            return model(_vid)
+
+    # -- init cuda --
+    forward(vid[:1,:3,:,:256,:256])
+
+    # -- bench fwd --
+    with th.no_grad():
+        with TimeIt(timer,"fwd_nograd"):
+            with MemIt(memer,"fwd_nograd"):
+                forward(vid)
+
+    # -- fill results --
+    results = edict()
+    for key,val in timer.items():
+        results[key] = val
+    for key,(res,alloc) in memer.items():
+        results["res_%s"%key] = res
+        results["alloc_%s"%key] = alloc
+
+    return results
+
 def load_model(cfg):
     return importlib.import_module(cfg.python_module).load_model(cfg)
 

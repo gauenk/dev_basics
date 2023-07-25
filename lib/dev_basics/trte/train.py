@@ -125,7 +125,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -- setup process --
     print("PID: ",os.getpid())
     th.set_float32_matmul_precision('medium')
-    set_seed(cfgs.tr.seed)
+    set_seed(cfgs.tr.seed+rank_zero_only.rank)
 
     # -- init model/simulator/lightning --
     device = "cuda"
@@ -148,7 +148,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
 
     # -- set-up --
     print("PID: ",os.getpid())
-    set_seed(cfgs.tr.seed)
+    set_seed(cfgs.tr.seed+rank_zero_only.rank)
     cfgs.tr.use_wandb = cfgs.tr.use_wandb
 
     # -- create timer --
@@ -171,11 +171,9 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # input: previous step's uuid
 
     # -- init validation performance --
-    outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
-    init_val_results,init_val_res_fn = outs
-    # timer.start("init_val_te")
+    # outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
+    # init_val_results,init_val_res_fn = outs
     # init_val_results,init_val_res_fn = {"init_val_te":-1},""
-    # timer.stop("init_val_te")
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     #
@@ -190,7 +188,8 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
         cfg_c["nsamples_val"] = 100
         pairs = {"dname":None,"nsamples_val":None,
                  "nframes":5,"fstride":1,"isize":None,
-                 "ntype":None,"sigma":30}
+                 "ntype":optional(cfg,'ntype','g'),
+                 "sigma":optional(cfg,'sigma',30)}
         for key in pairs.keys():
             default = optional(cfg,key,pairs[key])
             cfg_c[key] = optional(cfg,"%s_at_val" % key,default)
