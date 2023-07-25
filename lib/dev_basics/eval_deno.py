@@ -2,6 +2,8 @@
 
 Commandline compute psnrs between shared folders of two directories
 
+eval_deno <path_to_deno> <path_to_clean>
+
 """
 
 import os

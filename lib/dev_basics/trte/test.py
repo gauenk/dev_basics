@@ -205,6 +205,9 @@ def run(cfg):
         psnrs = compute_psnrs(clean,deno,div=imax)
         ssims = compute_ssims(clean,deno,div=imax)
         strred = compute_strred(clean,deno,div=imax)
+        print("psnrs: ",np.mean(psnrs))
+        print("ssims: ",np.mean(ssims))
+
 
         # -- compare [delete me] --
         # warps = model.warps
