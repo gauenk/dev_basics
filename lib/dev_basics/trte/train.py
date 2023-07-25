@@ -194,7 +194,7 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
         for key in pairs.keys():
             default = optional(cfg,key,pairs[key])
             cfg_c[key] = optional(cfg,"%s_at_val" % key,default)
-            assert not(cfg_c[key] is None),"[%s] Must not be none." % key
+            assert not(cfg_c[key] is None),"[%s_at_val] Must not be none." % key
         data_val,loaders_val = data_hub.sets.load(cfg_c)
         data['val'] = data_val[dset_val]
         loaders['val'] = loaders_val[dset_val]
@@ -296,11 +296,11 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
     logger = get_logger(log_dir,"train",cfgs.tr.use_wandb)
     ckpt_fn_val = cfgs.tr.uuid + "-{epoch:02d}-{val_loss:2.2e}"
     checkpoint_list = SaveCheckpointList(cfgs.tr.uuid,chkpt_dir,cfgs.tr.save_epoch_list)
-    checkpoint_callback = ModelCheckpoint(monitor="val_loss",save_top_k=11,
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss",save_top_k=3,
                                           mode="min",dirpath=chkpt_dir,
                                           filename=ckpt_fn_val)
     ckpt_fn_epoch = cfgs.tr.uuid + "-{epoch:02d}"
-    cc_recent = ModelCheckpoint(monitor="epoch",save_top_k=11,mode="max",
+    cc_recent = ModelCheckpoint(monitor="epoch",save_top_k=3,mode="max",
                                 dirpath=chkpt_dir,filename=ckpt_fn_epoch)
     callbacks = [checkpoint_list,checkpoint_callback,cc_recent]
     if cfgs.tr.swa:
@@ -343,7 +343,7 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
     cfg_clone = copy.deepcopy(cfg)
     cfg_clone.dname = optional(cfg,"dname_at_testing",cfg.dname)
     cfg_clone.nframes = optional(cfg,"nframes_at_testing",5)
-    cfg_clone.nsamples_tr = optional(cfg,"nsamples_at_testing",0)
+    cfg_clone.nsamples_tr = optional(cfg,"nsamples_te_at_testing",0)
     cfg_clone.nsamples_val = optional(cfg,"nsamples_at_testing",0)
     cfg_clone.nsamples_te = optional(cfg,"nsamples_at_testing",0)
     cfg_clone.isize = optional(cfg,"isize_at_testing",None)

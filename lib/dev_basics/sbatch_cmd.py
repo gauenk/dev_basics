@@ -31,7 +31,7 @@ def parse():
         epilog = 'Happy Hacking')
     parser.add_argument("launch_cmd",type=str,
                         help="The command to launch with sbatch")
-    parser.add_argument("--account",type=str,default=default_account,
+    parser.add_argument("-A","--account",type=str,default=default_account,
                         help="The account to launch")
     parser.add_argument("-T","--time",type=str,default=default_time,
                         help="The time limit of the proc")
