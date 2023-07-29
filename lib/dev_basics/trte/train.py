@@ -154,7 +154,10 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
 
     # -- set-up --
     print("PID: ",os.getpid())
-    set_seed(cfgs.tr.seed+rank_zero_only.rank)
+    seed_num = cfgs.tr.seed
+    if cfg.offset_seed_rank:
+        seed_num += rank_zero_only.rank
+    set_seed(seed_num)
     cfgs.tr.use_wandb = cfgs.tr.use_wandb
 
     # -- create timer --
