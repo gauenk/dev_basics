@@ -174,8 +174,8 @@ def run(cfg):
 
         # -- append noise map --
         noisy_input = noisy
+        B,T,C,H,W = noisy.shape
         if tcfg.append_noise_map:
-            B,T,C,H,W = noisy.shape
             noise_map = th.ones((B,T,1,H,W),device=noisy.device)*cfg.sigma
             noisy_input = th.cat([noisy,noise_map],2)
 
@@ -201,7 +201,8 @@ def run(cfg):
             deno_fns = ["" for _ in range(deno.shape[0])]
 
         # -- deno quality metrics --
-        noisy_psnrs = compute_psnrs(noisy,clean,div=imax)
+        C = clean.shape[-3]
+        noisy_psnrs = compute_psnrs(noisy[...,:C,:,:],clean,div=imax)
         psnrs = compute_psnrs(clean,deno,div=imax)
         ssims = compute_ssims(clean,deno,div=imax)
         strred = compute_strred(clean,deno,div=imax)

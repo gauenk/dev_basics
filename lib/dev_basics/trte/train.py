@@ -70,6 +70,7 @@ def train_pairs():
              "precision":32,
              "limit_train_batches":1.,
              "nepochs":30,
+             "offset_seed_rank":False,
              "uuid":"",
              "swa":False,
              "swa_epoch_start":0.8,
@@ -125,7 +126,12 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -- setup process --
     print("PID: ",os.getpid())
     th.set_float32_matmul_precision('medium')
-    set_seed(cfgs.tr.seed+rank_zero_only.rank)
+
+    # -- set seed --
+    seed_num = cfgs.tr.seed
+    if cfg.offset_seed_rank:
+        seed_num += rank_zero_only.rank
+    set_seed(seed_num)
 
     # -- init model/simulator/lightning --
     device = "cuda"
