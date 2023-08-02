@@ -39,7 +39,8 @@ def test_pairs():
              "flow_sigma":-1,"internal_adapt_nsteps":0,
              "internal_adapt_nepochs":0,"nframes":0,"read_flows":False,
              "save_deno":True,"python_module":"dev_basics.trte.id_model",
-             "bench_bwd":False,"append_noise_map":False,"arch_name":"default"}
+             "bench_bwd":False,"append_noise_map":False,"arch_name":"default",
+             "dd_in":3}
     return pairs
 
 @econfig.set_init
@@ -113,6 +114,8 @@ def run(cfg):
         region = sample['region']
         noisy,clean = sample['noisy'][None,],sample['clean'][None,]
         noisy,clean = noisy.to(tcfg.device),clean.to(tcfg.device)
+        sample['sigma'] = sample['sigma'][None,].to(tcfg.device)
+        noisy = ensure_chnls(tcfg.dd_in,noisy,sample)
         vid_frames = sample['fnums'].numpy()
         print("[%d] noisy.shape: " % index,noisy.shape)
 
@@ -260,6 +263,21 @@ def run(cfg):
     th.cuda.synchronize()
 
     return results
+
+def ensure_chnls(dd_in,noisy,batch):
+    if noisy.shape[-3] == dd_in:
+        return noisy
+    elif noisy.shape[-3] == 4 and dd_in == 3:
+        return noisy[...,:3,:,:].contiguous()
+    sigmas = []
+    B,t,c,h,w = noisy.shape
+    for b in range(B):
+        sigma_b = batch['sigma'][b]
+        noise_b = th.ones(t,1,h,w,device=sigma_b.device) * sigma_b
+        sigmas.append(noise_b)
+    sigmas = th.stack(sigmas)
+    return th.cat([noisy,sigmas],2)
+
 
 def measure_bwd(model,fwd_fxn,flows,noisy,clean,timer,memer):
 

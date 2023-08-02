@@ -99,9 +99,22 @@ def load_checkpoint_lit(model,path):
 def load_checkpoint_litr(model,path):
     # -- filename --
     weights = th.load(path)
-    state = weights['state_dict']
-    remove_lightning_load_state(state)
-    model.load_state_dict(state,strict=False)
+    state_dict = weights['state_dict']
+    remove_lightning_load_state(state_dict)
+
+    model_dict = model.state_dict()
+    new_state={k:v if v.size()==model_dict[k].size()  else  model_dict[k] 
+                 for k,v in zip(model_dict.keys(), state_dict.values())}
+    not_matching = [k if v.size()!=model_dict[k].size()  else  model_dict[k] 
+                    for k,v in zip(model_dict.keys(), state_dict.values())]
+
+    # -- some special keys [ew its in dev basics but idk; overwrite in lib?] --
+    for key in not_matching:
+        if key == "input_proj.proj.0.weight":
+            p = state_dict[key].clone()
+            chnls = th.randn_like(p[:,:1,:,:])
+            new_state[key] = th.cat([p,chnls],1)
+    model.load_state_dict(new_state,strict=False)
 
 def load_checkpoint_git(model,path):
     # -- filename --
