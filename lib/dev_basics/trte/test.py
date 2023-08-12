@@ -9,6 +9,7 @@ from pathlib import Path
 from easydict import EasyDict as edict
 
 # -- data --
+import os
 import data_hub
 
 # -- dev basics --
@@ -45,6 +46,9 @@ def test_pairs():
 
 @econfig.set_init
 def run(cfg):
+
+    # -- misc --
+    print(os.environ['CUDA_VISIBLE_DEVICES'])
 
     # -- config --
     econfig.init(cfg)
@@ -114,7 +118,8 @@ def run(cfg):
         region = sample['region']
         noisy,clean = sample['noisy'][None,],sample['clean'][None,]
         noisy,clean = noisy.to(tcfg.device),clean.to(tcfg.device)
-        sample['sigma'] = sample['sigma'][None,].to(tcfg.device)
+        if "sigma" in sample:
+            sample['sigma'] = sample['sigma'][None,].to(tcfg.device)
         noisy = ensure_chnls(tcfg.dd_in,noisy,sample)
         vid_frames = sample['fnums'].numpy()
         print("[%d] noisy.shape: " % index,noisy.shape)
