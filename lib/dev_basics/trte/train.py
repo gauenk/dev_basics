@@ -219,7 +219,9 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     # -- pytorch_lightning training --
     trainer,chkpt_callback = create_trainer(cfgs,log_dir,chkpt_dir)
     ckpt_path = get_checkpoint(chkpt_dir,cfgs.tr.uuid,cfgs.tr.nepochs)
+    print(len(loaders[dset_val]),type(loaders[dset_val]))
     print("Checkpoint Path: %s" % str(ckpt_path))
+    # exit()
     timer.start("train")
     trainer.fit(model, loaders[dset_tr], loaders[dset_val], ckpt_path=ckpt_path)
     timer.stop("train")
@@ -326,7 +328,7 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
                          log_every_n_steps=1,logger=logger,
                          gradient_clip_val=cfgs.tr.gradient_clip_val,
                          gradient_clip_algorithm=cfgs.tr.gradient_clip_algorithm,
-                         callbacks=callbacks,
+                         callbacks=callbacks,detect_anomaly=True,
                          strategy="ddp_find_unused_parameters_false")
 
     return trainer,checkpoint_callback

@@ -12,6 +12,7 @@ import torch as th
 from torchinfo import summary as th_summary
 from functools import partial
 from easydict import EasyDict as edict
+from dev_basics import net_chunks
 
 # -- model io --
 import importlib
@@ -26,16 +27,15 @@ from dev_basics import flow
 from dev_basics.utils.timer import ExpTimer,TimeIt
 from dev_basics.utils.gpu_mem import GpuMemer,MemIt
 
-
 def run(cfg):
 
     # -- load --
     vid = load_sample(cfg)
     model = load_model(cfg).to("cuda")
+    chunk_fxn = partial(net_chunks.chunk,cfg)
+    return run_loaded(model,vid,run_flows=cfg.flow,with_flows=True,chunk_fxn=chunk_fxn)
 
-    return run_loaded(model,vid,run_flows=cfg.flow,with_flows=True)
-
-def run_loaded(model,vid,run_flows=False,with_flows=False):
+def run_loaded(model,vid,run_flows=False,with_flows=False,fwd_only=False,chunk_fxn=None):
 
     # -- timer/memer --
     timer = ExpTimer()
@@ -49,13 +49,14 @@ def run_loaded(model,vid,run_flows=False,with_flows=False):
 
     # -- def forward --
     def forward(vid):
+        fwd_fxn = chunk_fxn(model.forward)
         if with_flows:
-            return model(vid,flows=flows)
+            return fwd_fxn(vid,flows=flows)
         else:
-            return model(vid)
+            return fwd_fxn(vid)
 
     # -- init cuda --
-    forward(vid)
+    forward(smaller_vid(vid))
 
     # -- bench fwd --
     with th.no_grad():
@@ -63,20 +64,22 @@ def run_loaded(model,vid,run_flows=False,with_flows=False):
             with MemIt(memer,"fwd_nograd"):
                 forward(vid)
 
-    # -- bench fwd --
-    with TimeIt(timer,"fwd"):
-        with MemIt(memer,"fwd"):
-            forward(vid)
+    if fwd_only is False:
 
-    # -- compute grad --
-    output = forward(vid)
-    error = th.randn_like(output)
-    loss = th.mean((error - output)**2)
+        # -- bench fwd --
+        with TimeIt(timer,"fwd"):
+            with MemIt(memer,"fwd"):
+                forward(vid)
 
-    # -- bench fwd --
-    with TimeIt(timer,"bwd"):
-        with MemIt(memer,"bwd"):
-            loss.backward()
+        # -- compute grad --
+        output = forward(vid)
+        error = th.randn_like(output)
+        loss = th.mean((error - output)**2)
+
+        # -- bench fwd --
+        with TimeIt(timer,"bwd"):
+            with MemIt(memer,"bwd"):
+                loss.backward()
 
     # -- fill results --
     results = edict()
@@ -87,6 +90,10 @@ def run_loaded(model,vid,run_flows=False,with_flows=False):
         results["alloc_%s"%key] = alloc
 
     return results
+
+def smaller_vid(vid):
+    B,T,C,H,W = vid.shape
+    return vid[:1,:4,:,:256,:256]
 
 def run_fwd(cfg):
 
@@ -174,7 +181,12 @@ def load_sample(cfg):
     else:
         indices = [0]
     sample = data[dset][indices[0]]
-    return sample['noisy'][None,:].to(device)
+    vid = sample['noisy'][None,:].to(device)
+    if "dd_in" in cfg and cfg.dd_in == 4:
+        noise = th.zeros_like(vid[:,:,:1])
+        vid = th.cat([vid,noise],-3)
+
+    return vid
 
 def print_summary(cfg,vshape,with_flows=True):
     model = load_model(cfg).to("cuda")
@@ -186,15 +198,17 @@ def print_summary(cfg,vshape,with_flows=True):
         model.forward = partial(model.forward,flows=flows)
     th_summary(model, input_size=vshape)
 
-def summary(cfg,vshape,with_flows=True):
+def summary(cfg,vshape,with_flows=True,fwd_only=False):
     model = load_model(cfg).to("cuda")
-    return summary_loaded(model,vshape,with_flows)
+    chunk_fxn = partial(net_chunks.chunk,cfg)
 
-def summary_loaded(model,vshape,with_flows=True):
+    return summary_loaded(model,vshape,with_flows,fwd_only,chunk_fxn)
+
+def summary_loaded(model,vshape,with_flows=True,fwd_only=False,chunk_fxn=None):
 
     # -- fwd/bwd times&mem --
     vid = th.randn(vshape).to("cuda:0")
-    res = run_loaded(model,vid,run_flows=False,with_flows=with_flows)
+    res = run_loaded(model,vid,run_flows=False,with_flows=with_flows,chunk_fxn=chunk_fxn)
 
     # -- view&append summary --
     if with_flows:

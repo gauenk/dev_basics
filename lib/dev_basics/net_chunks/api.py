@@ -31,7 +31,7 @@ def chunk(cfg,model):
     if econfig.is_init: return
 
     # -- chunking --
-    model_fwd = lambda vid,flows: model(vid,flows=flows)
+    model_fwd = lambda vid,flows=None: model(vid,flows=flows)
     model_fwd = channel_chunks(cfgs.channel,model_fwd)
     model_fwd = space_chunks(cfgs.space,model_fwd)
     model_fwd = time_chunks(cfgs.time,model_fwd)

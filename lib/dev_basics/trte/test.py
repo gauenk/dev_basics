@@ -4,6 +4,10 @@ import numpy as np
 import torch as th
 from einops import rearrange,repeat
 
+# -- upsample for noisy PSNR of Super-Res --
+import torchvision.transforms.functional as TF
+from torchvision.transforms import InterpolationMode
+
 # -- data mngmnt --
 from pathlib import Path
 from easydict import EasyDict as edict
@@ -17,8 +21,8 @@ from functools import partial
 from dev_basics.aug_test import test_x8
 from dev_basics import flow
 from dev_basics import net_chunks
-from dev_basics.utils.misc import get_region_gt
-from dev_basics.utils.misc import optional,slice_flows,set_seed
+from dev_basics.utils.misc import get_region_gt,ensure_chnls
+from dev_basics.utils.misc import optional,optional_attr,slice_flows,set_seed
 from dev_basics.utils.misc import rslice,write_pickle,read_pickle
 from dev_basics.utils.gpu_mem import GpuMemer,MemIt
 from dev_basics.utils.timer import ExpTimer,TimeIt
@@ -114,7 +118,8 @@ def run(cfg):
         region = sample['region']
         noisy,clean = sample['noisy'][None,],sample['clean'][None,]
         noisy,clean = noisy.to(tcfg.device),clean.to(tcfg.device)
-        sample['sigma'] = sample['sigma'][None,].to(tcfg.device)
+        if "sigma" in sample:
+            sample['sigma'] = sample['sigma'][None,].to(tcfg.device)
         noisy = ensure_chnls(tcfg.dd_in,noisy,sample)
         vid_frames = sample['fnums'].numpy()
         print("[%d] noisy.shape: " % index,noisy.shape)
@@ -188,7 +193,7 @@ def run(cfg):
                 with th.no_grad():
                     deno = fwd_fxn(noisy_input/imax,flows)
                 deno = deno.clamp(0.,1.)*imax
-        mtimes = model.times
+        mtimes = optional_attr(model,'times',{})
 
         # -- unpack if exists --
         if hasattr(model,'mem_res'):
@@ -205,13 +210,18 @@ def run(cfg):
 
         # -- deno quality metrics --
         C = clean.shape[-3]
-        noisy_psnrs = compute_psnrs(noisy[...,:C,:,:],clean,div=imax)
+        # print(th.mean(((clean-th.clip(noisy[...,:3,:,:],0,255.))/imax)**2).item())
+        # print(clean.shape,deno.shape,noisy.min(),noisy.max(),clean.min(),clean.max())
+        noisy_c = th.clip(noisy[...,:C,:,:],0,255)
+        # noisy_psnrs = compute_psnrs(noisy[...,:C,:,:],clean,div=imax)
+        if noisy_c.shape[-2:] != clean.shape[-2:]:
+            noisy_c = bilinear_upsample(noisy_c,*clean.shape[-2:])
+        noisy_psnrs = compute_psnrs(noisy_c,clean,div=imax)
         psnrs = compute_psnrs(clean,deno,div=imax)
         ssims = compute_ssims(clean,deno,div=imax)
         strred = compute_strred(clean,deno,div=imax)
         print("psnrs: ",np.mean(psnrs))
         print("ssims: ",np.mean(ssims))
-
 
         # -- compare [delete me] --
         # warps = model.warps
@@ -264,20 +274,27 @@ def run(cfg):
 
     return results
 
-def ensure_chnls(dd_in,noisy,batch):
-    if noisy.shape[-3] == dd_in:
-        return noisy
-    elif noisy.shape[-3] == 4 and dd_in == 3:
-        return noisy[...,:3,:,:].contiguous()
-    sigmas = []
-    B,t,c,h,w = noisy.shape
-    for b in range(B):
-        sigma_b = batch['sigma'][b]
-        noise_b = th.ones(t,1,h,w,device=sigma_b.device) * sigma_b
-        sigmas.append(noise_b)
-    sigmas = th.stack(sigmas)
-    return th.cat([noisy,sigmas],2)
+# def ensure_chnls(dd_in,noisy,batch):
+#     if noisy.shape[-3] == dd_in:
+#         return noisy
+#     elif noisy.shape[-3] == 4 and dd_in == 3:
+#         return noisy[...,:3,:,:].contiguous()
+#     sigmas = []
+#     B,t,c,h,w = noisy.shape
+#     for b in range(B):
+#         sigma_b = batch['sigma'][b]
+#         noise_b = th.ones(t,1,h,w,device=sigma_b.device) * sigma_b
+#         sigmas.append(noise_b)
+#     sigmas = th.stack(sigmas)
+#     return th.cat([noisy,sigmas],2)
 
+
+def bilinear_upsample(vid,H,W):
+    B = vid.shape[0]
+    vid = rearrange(vid,'b t c h w -> (b t) c h w')
+    vid = TF.resize(vid,(H,W),InterpolationMode.BILINEAR)
+    vid = rearrange(vid,'(b t) c h w -> b t c h w',b=B)
+    return vid
 
 def measure_bwd(model,fwd_fxn,flows,noisy,clean,timer,memer):
 

@@ -92,7 +92,15 @@ def save_image_png(image,base):
 
 def read_video(path):
     fns = list(Path(path).iterdir())
-    ints = [int(fn.stem) for fn in fns]
+    try:
+        ints = [int(fn.stem) for fn in fns]
+    except:
+        try:
+            ints = [int(fn.stem.split("im")[1]) for fn in fns]
+        except:
+            ints = [i[0] for i in sorted(enumerate(fns), key=lambda x:x[1])]
+    # print(ints,fns)
+    # exit()
     fns = [x for _, x in sorted(zip(ints, fns))]
     return read_files(fns)
 

@@ -46,6 +46,7 @@ def get_chunks(size,chunk_size,overlap):
     split processing
 
     """
+    overlap = handle_int_overlap(size,overlap)
     points = [0]
     stride = max(int(chunk_size * (1-overlap)),1)
     if size <= chunk_size: return [0]
@@ -62,6 +63,15 @@ def get_chunks(size,chunk_size,overlap):
     points = list(np.unique(points))
     return points
 
+
+def handle_int_overlap(size,overlap):
+    if overlap >= 0 and overlap < 1:
+        return overlap
+    elif overlap >= 1:
+        if isinstance(overlap,int):
+            return (1.*overlap)/size
+    else:
+        raise ValueError("Uknown behavior for overlap as a float greater than 1 or less than 0.")
 
 def expected_runs(cfg,T,C,H,W):
 

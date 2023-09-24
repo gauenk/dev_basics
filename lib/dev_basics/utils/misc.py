@@ -25,6 +25,12 @@ def optional(pydict,key,default):
     elif key in pydict: return pydict[key]
     else: return default
 
+def optional_attr(pyobj,value,default):
+    if hasattr(pyobj,value):
+        return getattr(pyobj,value)
+    else:
+        return default
+
 def optional_delete(pydict,key):
     if pydict is None: return
     elif key in pydict: del pydict[key]
@@ -108,3 +114,18 @@ def transpose_dict_list(pydict):
             pylist_l[key] = val_list[l]
         pylists.append(pylist_l)
     return pylists
+
+def ensure_chnls(dd_in,noisy,batch):
+    if noisy.shape[-3] == dd_in:
+        return noisy
+    elif noisy.shape[-3] == 4 and dd_in == 3:
+        return noisy[...,:3,:,:].contiguous()
+    sigmas = []
+    B,t,c,h,w = noisy.shape
+    for b in range(B):
+        sigma_b = batch['sigma'][b]
+        noise_b = th.ones(t,1,h,w,device=sigma_b.device) * sigma_b
+        sigmas.append(noise_b)
+    sigmas = th.stack(sigmas)
+    return th.cat([noisy,sigmas],2)
+
