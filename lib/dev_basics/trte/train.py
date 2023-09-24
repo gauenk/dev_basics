@@ -320,7 +320,7 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
     ndevices_local = int(cfgs.tr.ndevices/cfgs.tr.num_nodes)
     print(cfgs.tr.num_nodes,cfgs.tr.ndevices,ndevices_local)
     trainer = pl.Trainer(accelerator="gpu",
-                         # num_nodes=cfgs.tr.num_nodes,
+                         num_nodes=cfgs.tr.num_nodes,
                          devices=ndevices_local,precision=32,
                          accumulate_grad_batches=cfgs.tr.accumulate_grad_batches,
                          limit_train_batches=cfgs.tr.limit_train_batches,

@@ -13,6 +13,7 @@ from pathlib import Path
 from easydict import EasyDict as edict
 
 # -- data --
+import os
 import data_hub
 
 # -- dev basics --
@@ -49,6 +50,9 @@ def test_pairs():
 
 @econfig.set_init
 def run(cfg):
+
+    # -- misc --
+    print(os.environ['CUDA_VISIBLE_DEVICES'])
 
     # -- config --
     econfig.init(cfg)
