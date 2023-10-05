@@ -307,13 +307,14 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
 
 def create_trainer(cfgs,log_dir,chkpt_dir):
     logger = get_logger(log_dir,"train",cfgs.tr.use_wandb)
-    ckpt_fn_val = cfgs.tr.uuid + "-{epoch:02d}-{val_loss:2.2e}"
-    checkpoint_list = SaveCheckpointList(cfgs.tr.uuid,chkpt_dir,cfgs.tr.save_epoch_list)
+    ckpt_fn_val = cfgs.tr.uuid + "-{global_step}-{val_loss:2.2e}"
+    checkpoint_list = SaveCheckpointListBySteps(cfgs.tr.uuid,chkpt_dir,
+                                                 cfgs.tr.save_step_list)
     checkpoint_callback = ModelCheckpoint(monitor="val_loss",save_top_k=3,
                                           mode="min",dirpath=chkpt_dir,
                                           filename=ckpt_fn_val)
-    ckpt_fn_epoch = cfgs.tr.uuid + "-{epoch:02d}"
-    cc_recent = ModelCheckpoint(monitor="epoch",save_top_k=3,mode="max",
+    ckpt_fn_epoch = cfgs.tr.uuid + "-{global_step}"
+    cc_recent = ModelCheckpoint(monitor="global_step",save_top_k=3,mode="max",
                                 dirpath=chkpt_dir,filename=ckpt_fn_epoch)
     callbacks = [checkpoint_list,checkpoint_callback,cc_recent]
     if cfgs.tr.swa:
@@ -400,7 +401,7 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
     model.isize = cfg.isize
     return results,res_fn
 
-class SaveCheckpointList(Callback):
+class SaveCheckpointListByEpochs(Callback):
 
     def __init__(self,uuid,outdir,save_epochs):
         super().__init__()
@@ -425,6 +426,34 @@ class SaveCheckpointList(Callback):
         elif self.save_type == "interval":
             if not((epoch+1) % self.save_interval == 0): return
             path = Path(self.outdir / ("%s-save-epoch=%02d.ckpt" % (uuid,epoch)))
+            trainer.save_checkpoint(str(path))
+
+class SaveCheckpointListBySteps(Callback):
+
+    def __init__(self,uuid,outdir,save_steps):
+        super().__init__()
+        self.uuid = uuid
+        self.outdir = outdir
+        self.save_steps = []
+        self.save_interval = -1
+        if "-" in save_steps:
+            self.save_steps = [int(s) for s in save_steps.split("-")]
+            self.save_type = "list"
+        elif save_steps.startswith("by"):
+            self.save_interval = int(save_steps.split("by")[-1])
+            self.save_type = "interval"
+
+    def on_train_batch_end(self, trainer, pl_module):
+        uuid = self.uuid
+        step = trainer.global_step
+        if step == 0: return
+        if self.save_type == "list":
+            if not(step in self.save_steps): return
+            path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step)))
+            trainer.save_checkpoint(str(path))
+        elif self.save_type == "interval":
+            if not(step % self.save_interval == 0): return
+            path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step)))
             trainer.save_checkpoint(str(path))
 
 class MetricsCallback(Callback):
