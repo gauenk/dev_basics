@@ -282,6 +282,9 @@ def wait_checkpoint_exists(ckpt_dir):
         time.sleep(1)
 
 def get_checkpoint(checkpoint_dir,uuid,nepochs):
+    """
+    Picks based on epochs, not steps
+    """
     checkpoint_dir = Path(checkpoint_dir)
     if rank_zero_only.rank > 0:
         wait_checkpoint_exists(checkpoint_dir)

@@ -41,8 +41,8 @@ class GpuMemer(): # like "Timer"
     def stop(self,name):
         if self.use_mem is False: return
         th.cuda.synchronize()
-        mem_alloc = th.cuda.memory_allocated() / 1024**3
-        mem_res = th.cuda.memory_reserved() / 1024**3
+        mem_alloc = th.cuda.max_memory_allocated() / 1024**3
+        mem_res = th.cuda.max_memory_reserved() / 1024**3
         self.names.append(name)
         self.mems_alloc.append(mem_alloc)
         self.mems_res.append(mem_res)
