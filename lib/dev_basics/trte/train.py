@@ -79,6 +79,8 @@ def train_pairs():
              "isize":"128_128",
              "subdir":"",
              "save_epoch_list":"",
+             "save_step_list":"",
+             "save_step_nkeep":-1,
              "use_wandb":False
     }
     return pairs
@@ -309,10 +311,11 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
 def create_trainer(cfgs,log_dir,chkpt_dir):
     logger = get_logger(log_dir,"train",cfgs.tr.use_wandb)
     ckpt_fn_val = cfgs.tr.uuid + "-{epoch:02d}-{val_loss:2.2e}"
-    checkpoint_list = SaveCheckpointListByEpochs(cfgs.tr.uuid,chkpt_dir,
-                                                 cfgs.tr.save_epoch_list)
-    # checkpoint_list = SaveCheckpointListBySteps(cfgs.tr.uuid,chkpt_dir,
-    #                                              cfgs.tr.save_step_list)
+    # checkpoint_list = SaveCheckpointListByEpochs(cfgs.tr.uuid,chkpt_dir,
+    #                                              cfgs.tr.save_epoch_list)
+    checkpoint_list = SaveCheckpointListBySteps(cfgs.tr.uuid,chkpt_dir,
+                                                cfgs.tr.save_step_list,
+                                                cfgs.tr.save_step_nkeep)
     checkpoint_callback = ModelCheckpoint(monitor="val_loss",save_top_k=3,
                                           mode="min",dirpath=chkpt_dir,
                                           filename=ckpt_fn_val)
@@ -436,7 +439,7 @@ class SaveCheckpointListByEpochs(Callback):
 
 class SaveCheckpointListBySteps(Callback):
 
-    def __init__(self,uuid,outdir,save_steps,nkeep=3):
+    def __init__(self,uuid,outdir,save_steps,nkeep=-1):
         super().__init__()
         self.uuid = uuid
         self.outdir = outdir
@@ -450,7 +453,7 @@ class SaveCheckpointListBySteps(Callback):
             self.save_interval = int(save_steps.split("by")[-1])
             self.save_type = "interval"
 
-    def on_train_batch_end(self, trainer, pl_module):
+    def on_train_batch_end(self, trainer, pl_module, *args):
         uuid = self.uuid
         step = trainer.global_step
         if step == 0: return
@@ -465,20 +468,15 @@ class SaveCheckpointListBySteps(Callback):
         self.save_only_nkeep(step)
 
     def save_only_nkeep(self,step):
+        if self.nkeep <= 0: return
+        if self.save_type != "interval": return
         uuid = self.uuid
-        if self.save_type == "interval":
-            nevents = step//self.save_interval
-            for i in range(1,nevents-self.nkeep):
-                step_i = i*self.save_interval
-                path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step_i)))
-                if path.exists(): path.remove()
-        elif self.save_type == "list":
-            step_idx = self.save_steps.index(step)
-            end_idx = step_idx-self.nkeep
-            if end_idx < 0: return
-            for step_i in self.save_steps[:end_idx]:
-                path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step_i)))
-                if path.exists(): path.remove()
+        nevents = step//self.save_interval+1
+        start = max(1,nevents-self.nkeep-1)
+        for i in range(start,nevents-self.nkeep):
+            step_i = i*self.save_interval
+            path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step_i)))
+            if path.exists(): os.remove(str(path))
 
 class MetricsCallback(Callback):
     """PyTorch Lightning metric callback."""
