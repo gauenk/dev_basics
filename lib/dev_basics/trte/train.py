@@ -69,6 +69,7 @@ def train_pairs():
              "num_nodes":1,
              "precision":32,
              "limit_train_batches":1.,
+             "limit_val_batches":1.,
              "nepochs":30,
              "offset_seed_rank":False,
              "uuid":"",
@@ -307,14 +308,16 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
 
 def create_trainer(cfgs,log_dir,chkpt_dir):
     logger = get_logger(log_dir,"train",cfgs.tr.use_wandb)
-    ckpt_fn_val = cfgs.tr.uuid + "-{global_step}-{val_loss:2.2e}"
-    checkpoint_list = SaveCheckpointListBySteps(cfgs.tr.uuid,chkpt_dir,
-                                                 cfgs.tr.save_step_list)
+    ckpt_fn_val = cfgs.tr.uuid + "-{epoch:02d}-{val_loss:2.2e}"
+    checkpoint_list = SaveCheckpointListByEpochs(cfgs.tr.uuid,chkpt_dir,
+                                                 cfgs.tr.save_epoch_list)
+    # checkpoint_list = SaveCheckpointListBySteps(cfgs.tr.uuid,chkpt_dir,
+    #                                              cfgs.tr.save_step_list)
     checkpoint_callback = ModelCheckpoint(monitor="val_loss",save_top_k=3,
                                           mode="min",dirpath=chkpt_dir,
                                           filename=ckpt_fn_val)
-    ckpt_fn_epoch = cfgs.tr.uuid + "-{global_step}"
-    cc_recent = ModelCheckpoint(monitor="global_step",save_top_k=3,mode="max",
+    ckpt_fn_epoch = cfgs.tr.uuid + "-{epoch:02d}"
+    cc_recent = ModelCheckpoint(monitor="epoch",save_top_k=3,mode="max",
                                 dirpath=chkpt_dir,filename=ckpt_fn_epoch)
     callbacks = [checkpoint_list,checkpoint_callback,cc_recent]
     if cfgs.tr.swa:
@@ -328,7 +331,10 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
                          devices=ndevices_local,precision=32,
                          accumulate_grad_batches=cfgs.tr.accumulate_grad_batches,
                          limit_train_batches=cfgs.tr.limit_train_batches,
-                         limit_val_batches=1.,max_epochs=cfgs.tr.nepochs,
+                         limit_val_batches=cfgs.tr.limit_val_batches,
+                         max_epochs=cfgs.tr.nepochs,
+                         val_check_interval=1.,
+                         check_val_every_n_epoch=1,
                          log_every_n_steps=1,logger=logger,
                          gradient_clip_val=cfgs.tr.gradient_clip_val,
                          gradient_clip_algorithm=cfgs.tr.gradient_clip_algorithm,
@@ -430,12 +436,13 @@ class SaveCheckpointListByEpochs(Callback):
 
 class SaveCheckpointListBySteps(Callback):
 
-    def __init__(self,uuid,outdir,save_steps):
+    def __init__(self,uuid,outdir,save_steps,nkeep=3):
         super().__init__()
         self.uuid = uuid
         self.outdir = outdir
         self.save_steps = []
         self.save_interval = -1
+        self.nkeep = nkeep
         if "-" in save_steps:
             self.save_steps = [int(s) for s in save_steps.split("-")]
             self.save_type = "list"
@@ -455,6 +462,23 @@ class SaveCheckpointListBySteps(Callback):
             if not(step % self.save_interval == 0): return
             path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step)))
             trainer.save_checkpoint(str(path))
+        self.save_only_nkeep(step)
+
+    def save_only_nkeep(self,step):
+        uuid = self.uuid
+        if self.save_type == "interval":
+            nevents = step//self.save_interval
+            for i in range(1,nevents-self.nkeep):
+                step_i = i*self.save_interval
+                path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step_i)))
+                if path.exists(): path.remove()
+        elif self.save_type == "list":
+            step_idx = self.save_steps.index(step)
+            end_idx = step_idx-self.nkeep
+            if end_idx < 0: return
+            for step_i in self.save_steps[:end_idx]:
+                path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step_i)))
+                if path.exists(): path.remove()
 
 class MetricsCallback(Callback):
     """PyTorch Lightning metric callback."""
