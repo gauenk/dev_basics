@@ -140,7 +140,7 @@ class ExtractConfig():
                 cfgs[name] = econfig.extract_config(cfg,new=True)
             else:
                 extract_config = econfig
-                cfgs[name] = extract_config(cfg,restrict=True)
+                cfgs[name] = extract_config(cfg)#,restrict=True)
 
             # -- 2.) append to pairs --
             for key,val in cfgs[name].items():
