@@ -70,7 +70,8 @@ def train_pairs():
              "precision":32,
              "limit_train_batches":1.,
              "limit_val_batches":1.,
-             "nepochs":30,
+             "nepochs":0,
+             "nsteps":0,
              "offset_seed_rank":False,
              "uuid":"",
              "swa":False,
@@ -96,7 +97,7 @@ def overwrite_field(name,cfg,value):
     cfg[name] = value
 
 @econfig.set_init
-def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
+def run(cfg):
 
     # -=-=-=-=-=-=-=-=-
     #
@@ -119,10 +120,13 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
     cfg = dcat(cfg,econfig.flatten(cfgs)) # update cfg
     if econfig.is_init: return
     # overwrite_nepochs(cfgs.tr,nepochs)
-    overwrite_field("nepochs",cfgs.tr,nepochs)
-    overwrite_field("nepochs",cfgs.lit,nepochs)
-    overwrite_field("flow_from_end",cfgs.lit,flow_from_end)
-    overwrite_field("flow_epoch",cfgs.lit,flow_epoch)
+    # overwrite_field("nepochs",cfgs.tr,nepochs)
+    # overwrite_field("nepochs",cfgs.lit,nepochs)
+    # overwrite_field("nsteps",cfgs.tr,nsteps)
+    # overwrite_field("nsteps",cfgs.lit,nsteps)
+    # overwrite_field("flow_from_end",cfgs.lit,flow_from_end)
+    # overwrite_field("flow_epoch",cfgs.lit,flow_epoch)
+    assert (cfgs.tr.nepochs == 0) or (cfgs.tr.nsteps == 0)
     if cfgs.tr.gradient_clip_val <= 0:
         cfgs.tr.gradient_clip_val = None
 
@@ -221,7 +225,10 @@ def run(cfg,nepochs=None,flow_from_end=None,flow_epoch=None):
 
     # -- pytorch_lightning training --
     trainer,chkpt_callback = create_trainer(cfgs,log_dir,chkpt_dir)
-    ckpt_path = get_checkpoint(chkpt_dir,cfgs.tr.uuid,cfgs.tr.nepochs)
+    nsteps,nepochs = optional(cfgs.tr,"nsteps",0),optional(cfgs.tr,"nepochs",0)-1
+    niters = nsteps if nsteps > 0 else nepochs
+    step_type = "global_step" if nsteps > 0 else "epoch"
+    ckpt_path = get_checkpoint(chkpt_dir,cfgs.tr.uuid,niters,step_type)
     print(len(loaders[dset_val]),type(loaders[dset_val]))
     print("Checkpoint Path: %s" % str(ckpt_path))
     # exit()
@@ -284,7 +291,7 @@ def wait_checkpoint_exists(ckpt_dir):
     while not(ckpt_dir.exists()):
         time.sleep(1)
 
-def get_checkpoint(checkpoint_dir,uuid,nepochs):
+def get_checkpoint(checkpoint_dir,uuid,niters,step_type):
     """
     Picks based on epochs, not steps
     """
@@ -296,9 +303,9 @@ def get_checkpoint(checkpoint_dir,uuid,nepochs):
             checkpoint_dir.mkdir(parents=True)
             return None
     chosen_ckpt = ""
-    for epoch in range(nepochs):
+    for iter_i in range(niters):
         # if epoch > 49: break
-        ckpt_fn = checkpoint_dir / ("%s-epoch=%02d.ckpt" % (uuid,epoch))
+        ckpt_fn = checkpoint_dir / ("%s-%s=%02d.ckpt" % (uuid,step_type,iter_i))
         if ckpt_fn.exists(): chosen_ckpt = ckpt_fn
     assert ((chosen_ckpt == "") or chosen_ckpt.exists())
     if chosen_ckpt != "":
