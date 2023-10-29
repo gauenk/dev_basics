@@ -187,9 +187,9 @@ def run(cfg):
     # input: previous step's uuid
 
     # -- init validation performance --
-    # outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
+    outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
     # init_val_results,init_val_res_fn = outs
-    # init_val_results,init_val_res_fn = {"init_val_te":-1},""
+    init_val_results,init_val_res_fn = {"init_val_te":-1},""
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     #
@@ -342,7 +342,8 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
                          accumulate_grad_batches=cfgs.tr.accumulate_grad_batches,
                          limit_train_batches=cfgs.tr.limit_train_batches,
                          limit_val_batches=cfgs.tr.limit_val_batches,
-                         max_epochs=cfgs.tr.nepochs,
+                         # max_epochs=cfgs.tr.nepochs,
+                         max_steps=cfgs.tr.nsteps,
                          val_check_interval=1.,
                          check_val_every_n_epoch=1,
                          log_every_n_steps=1,logger=logger,
@@ -374,16 +375,20 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
     cfg_clone.dname = optional(cfg,"dname_at_testing",cfg.dname)
     cfg_clone.nframes = optional(cfg,"nframes_at_testing",5)
     cfg_clone.nsamples_tr = optional(cfg,"nsamples_te_at_testing",0)
-    cfg_clone.nsamples_val = optional(cfg,"nsamples_at_testing",0)
-    cfg_clone.nsamples_te = optional(cfg,"nsamples_at_testing",0)
+    cfg_clone.nsamples_val = optional(cfg,"nsamples_val_at_testing",0)
+    cfg_clone.nsamples_te = optional(cfg,"nsamples_te_at_testing",0)
     cfg_clone.isize = optional(cfg,"isize_at_testing",None)
     cfg_clone.batch_size = 1
     cfg_clone.batch_size_tr = 1
     cfg_clone.batch_size_val = 1
     cfg_clone.batch_size_te = 1
+    print(cfg_clone)
     data,loaders = data_hub.sets.load(cfg_clone)
     print("len(data.val): ",len(data.val))
     print("len(loaders.val): ",len(loaders.val))
+    # print("len(data.te): ",len(data.te))
+    # print("len(loaders.te): ",len(loaders.te))
+
 
     # -- set model's isize --
     model.isize = cfg.isize
@@ -459,6 +464,7 @@ class SaveCheckpointListBySteps(Callback):
         elif save_steps.startswith("by"):
             self.save_interval = int(save_steps.split("by")[-1])
             self.save_type = "interval"
+        print("Saving Checkpoint List by Steps: [%d,%d]" % (self.save_interval,nkeep))
 
     def on_train_batch_end(self, trainer, pl_module, *args):
         uuid = self.uuid
@@ -466,11 +472,11 @@ class SaveCheckpointListBySteps(Callback):
         if step == 0: return
         if self.save_type == "list":
             if not(step in self.save_steps): return
-            path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step)))
+            path = Path(self.outdir / ("%s-save-global_step=%02d.ckpt" % (uuid,step)))
             trainer.save_checkpoint(str(path))
         elif self.save_type == "interval":
             if not(step % self.save_interval == 0): return
-            path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step)))
+            path = Path(self.outdir / ("%s-save-global_step=%02d.ckpt" % (uuid,step)))
             trainer.save_checkpoint(str(path))
         self.save_only_nkeep(step)
 
@@ -482,7 +488,7 @@ class SaveCheckpointListBySteps(Callback):
         start = max(1,nevents-self.nkeep-1)
         for i in range(start,nevents-self.nkeep):
             step_i = i*self.save_interval
-            path = Path(self.outdir / ("%s-save-step=%02d.ckpt" % (uuid,step_i)))
+            path = Path(self.outdir / ("%s-save-global_step=%02d.ckpt" % (uuid,step_i)))
             if path.exists(): os.remove(str(path))
 
 class MetricsCallback(Callback):
