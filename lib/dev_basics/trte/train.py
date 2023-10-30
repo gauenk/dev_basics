@@ -307,11 +307,14 @@ def get_checkpoint(checkpoint_dir,uuid,niters,step_type):
         # if epoch > 49: break
         ckpt_fn = checkpoint_dir / ("%s-%s=%02d.ckpt" % (uuid,step_type,iter_i))
         if ckpt_fn.exists(): chosen_ckpt = ckpt_fn
+        ckpt_fn = checkpoint_dir / ("%s-save-%s=%02d.ckpt" % (uuid,step_type,iter_i))
+        if ckpt_fn.exists(): chosen_ckpt = ckpt_fn
     assert ((chosen_ckpt == "") or chosen_ckpt.exists())
     if chosen_ckpt != "":
         print("Resuming training from {%s}" % (str(chosen_ckpt)))
         chosen_ckpt = str(chosen_ckpt)
     else:
+        print("Training from Scratch.")
         chosen_ckpt = None
     return chosen_ckpt
 
@@ -467,6 +470,7 @@ class SaveCheckpointListBySteps(Callback):
         print("Saving Checkpoint List by Steps: [%d,%d]" % (self.save_interval,nkeep))
 
     def on_train_batch_end(self, trainer, pl_module, *args):
+        if not(rank_zero_only.rank == 0): return
         uuid = self.uuid
         step = trainer.global_step
         if step == 0: return
@@ -481,6 +485,7 @@ class SaveCheckpointListBySteps(Callback):
         self.save_only_nkeep(step)
 
     def save_only_nkeep(self,step):
+        if not(rank_zero_only.rank == 0): return
         if self.nkeep <= 0: return
         if self.save_type != "interval": return
         uuid = self.uuid
@@ -489,7 +494,7 @@ class SaveCheckpointListBySteps(Callback):
         for i in range(start,nevents-self.nkeep):
             step_i = i*self.save_interval
             path = Path(self.outdir / ("%s-save-global_step=%02d.ckpt" % (uuid,step_i)))
-            if path.exists(): os.remove(str(path))
+            if path.exists(): os.remove(str(path.resolve()))
 
 class MetricsCallback(Callback):
     """PyTorch Lightning metric callback."""
