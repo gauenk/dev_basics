@@ -186,11 +186,6 @@ def run(cfg):
     # -- copy previous step checkpoint --
     # input: previous step's uuid
 
-    # -- init validation performance --
-    outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
-    # init_val_results,init_val_res_fn = outs
-    init_val_results,init_val_res_fn = {"init_val_te":-1},""
-
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     #
     #          Training
@@ -231,6 +226,19 @@ def run(cfg):
     ckpt_path = get_checkpoint(chkpt_dir,cfgs.tr.uuid,niters,step_type)
     print(len(loaders[dset_val]),type(loaders[dset_val]))
     print("Checkpoint Path: %s" % str(ckpt_path))
+
+    # -- init validation performance --
+    # outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
+    # init_val_results,init_val_res_fn = outs
+    cfgs_val = dcopy(cfgs)
+    cfgs_val.tr.ndevices = 1
+    cfgs_val.tr.num_nodes = 1
+    trainer_val,_ = create_trainer(cfgs_val,log_dir,chkpt_dir)
+    trainer_val.validate(model=model,
+                         dataloaders=loaders[dset_val],ckpt_path=ckpt_path)
+    init_val_results,init_val_res_fn = {"init_val_te":-1},""
+
+    # -- training --
     # exit()
     timer.start("train")
     trainer.fit(model, loaders[dset_tr], loaders[dset_val], ckpt_path=ckpt_path)
@@ -311,7 +319,7 @@ def get_checkpoint(checkpoint_dir,uuid,niters,step_type):
         if ckpt_fn.exists(): chosen_ckpt = ckpt_fn
     assert ((chosen_ckpt == "") or chosen_ckpt.exists())
     if chosen_ckpt != "":
-        print("Resuming training from {%s}" % (str(chosen_ckpt)))
+        print("Resuming training from [%s]" % (str(chosen_ckpt)))
         chosen_ckpt = str(chosen_ckpt)
     else:
         print("Training from Scratch.")
@@ -338,7 +346,7 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
                                 swa_epoch_start=cfgs.tr.swa_epoch_start)
         callbacks += [swa_callback]
     ndevices_local = int(cfgs.tr.ndevices/cfgs.tr.num_nodes)
-    print(cfgs.tr.num_nodes,cfgs.tr.ndevices,ndevices_local)
+    # print(cfgs.tr.num_nodes,cfgs.tr.ndevices,ndevices_local)
     trainer = pl.Trainer(accelerator="gpu",
                          num_nodes=cfgs.tr.num_nodes,
                          devices=ndevices_local,precision=32,
@@ -347,8 +355,9 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
                          limit_val_batches=cfgs.tr.limit_val_batches,
                          # max_epochs=cfgs.tr.nepochs,
                          max_steps=cfgs.tr.nsteps,
-                         val_check_interval=1.,
-                         check_val_every_n_epoch=1,
+                         # num_sanity_val_steps=-1,
+                         # val_check_interval=-1,
+                         # check_val_every_n_epoch=1,
                          log_every_n_steps=1,logger=logger,
                          gradient_clip_val=cfgs.tr.gradient_clip_val,
                          gradient_clip_algorithm=cfgs.tr.gradient_clip_algorithm,
