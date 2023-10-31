@@ -230,13 +230,14 @@ def run(cfg):
     # -- init validation performance --
     # outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
     # init_val_results,init_val_res_fn = outs
-    cfgs_val = dcopy(cfgs)
-    cfgs_val.tr.ndevices = 1
-    cfgs_val.tr.num_nodes = 1
-    trainer_val,_ = create_trainer(cfgs_val,log_dir,chkpt_dir)
-    trainer_val.validate(model=model,
-                         dataloaders=loaders[dset_val],ckpt_path=ckpt_path)
+    # cfgs_val = dcopy(cfgs)
+    # cfgs_val.tr.ndevices = 1
+    # cfgs_val.tr.num_nodes = 1
+    # trainer_val,_ = create_trainer(cfgs_val,log_dir,chkpt_dir)
+    # trainer_val.validate(model=model,
+    #                      dataloaders=loaders[dset_val],ckpt_path=ckpt_path)
     init_val_results,init_val_res_fn = {"init_val_te":-1},""
+    # print("yo.")
 
     # -- training --
     # exit()
