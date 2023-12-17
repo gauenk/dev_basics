@@ -2,7 +2,7 @@
 # -- processing --
 import torch as th
 from easydict import EasyDict as edict
-from .shared import get_chunks,expand_match
+from .shared import get_chunks,expand_match,get_outputs
 from ..common import _vprint
 from functools import partial
 
@@ -39,8 +39,8 @@ def time_chunks(cfg,in_fwd):
     # -- run --
     out_fwd = in_fwd
     if not(size is None) and not(size == "none") and not(size <= 0):
-        out_fwd = lambda vid,flows: run_temporal_chunks(in_fwd,size,overlap,vid,
-                                                        flows=flows,verbose=verbose)
+        out_fwd = lambda vid,flows=None: run_temporal_chunks(in_fwd,size,overlap,vid,
+                                                             flows=flows,verbose=verbose)
     return out_fwd
 
 #
@@ -62,11 +62,14 @@ def run_temporal_chunks(fwd_fxn,tsize,overlap,vid,flows=None,verbose=True):
     # -- output shape --
     C = vid.shape[-3]
     Cout = 3 if C in [3,4] else C
+    Cout = C
     oshape = list(vid.shape)
     oshape[-3] = Cout
 
     # -- alloc --
-    deno = th.zeros(oshape,device=vid.device)
+    deno = None
+    rH,rW = None,None
+    # deno = th.zeros(oshape,device=vid.device)
     Z = th.zeros(nframes,device=vid.device)
 
     # -- run --
@@ -82,8 +85,13 @@ def run_temporal_chunks(fwd_fxn,tsize,overlap,vid,flows=None,verbose=True):
         if flows: deno_chunk = fwd_fxn(vid_chunk,flow_chunk)
         else: deno_chunk = fwd_fxn(vid_chunk,flow_chunk)
 
+        # -- outputs --
+        deno,_,rH,rW = get_outputs(deno,Z,rH,rW,deno_chunk,vid_chunk,vid)
+
         # -- accumulate --
-        deno[...,t_slice,:,:,:] += deno_chunk
+        # print(deno.shape,deno_chunk.shape,vid.shape,t_slice)
+        Cout = deno_chunk.shape[-3]
+        deno[...,t_slice,:Cout,:,:] += deno_chunk
         Z[t_slice] += 1
 
     # -- normalize --

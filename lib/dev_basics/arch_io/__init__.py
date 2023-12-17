@@ -111,11 +111,11 @@ def load_checkpoint_litr(model,path):
                     for k,v in zip(model_dict.keys(), state_dict.values())]
 
     # -- some special keys [ew its in dev basics but idk; overwrite in lib?] --
-    for key in not_matching:
-        if key == "input_proj.proj.0.weight":
-            p = state_dict[key].clone()
-            chnls = th.randn_like(p[:,:1,:,:])
-            new_state[key] = th.cat([p,chnls],1)
+    # for key in not_matching:
+    #     if key == "input_proj.proj.0.weight":
+    #         p = state_dict[key].clone()
+    #         chnls = th.randn_like(p[:,:1,:,:])
+    #         new_state[key] = th.cat([p,chnls],1)
     model.load_state_dict(new_state,strict=False)
 
 def load_checkpoint_git(model,path):

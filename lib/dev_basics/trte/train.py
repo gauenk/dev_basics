@@ -81,8 +81,11 @@ def train_pairs():
              "subdir":"",
              "save_epoch_list":"",
              "save_step_list":"",
-             "save_step_nkeep":-1,
-             "use_wandb":False
+             "save_step_nkeep":5,
+             "use_wandb":False,
+             "name":"default_name",
+             "sigma":-1,
+             "check_val_every_n_epoch":5,
     }
     return pairs
 
@@ -113,10 +116,11 @@ def run(cfg):
     net_extract_config = net_module.extract_config
     lit_extract_config = lit_module.extract_config
     sim_extract_config = sim_module.extract_config
+    # _cfg = econfig.extract_pairs(cfg,train_pairs(),new=False,restrict=True)
     cfgs = econfig.extract_set({"tr":train_pairs(),
                                 "net":net_extract_config(cfg),
                                 "lit":lit_extract_config(cfg),
-                                "sim":sim_extract_config(cfg)})
+                                "sim":sim_extract_config(cfg)},restrict=True)
     cfg = dcat(cfg,econfig.flatten(cfgs)) # update cfg
     if econfig.is_init: return
     # overwrite_nepochs(cfgs.tr,nepochs)
@@ -209,10 +213,10 @@ def run(cfg):
         data,loaders = data_hub.sets.load(cfg_c)
         cfg_c["batch_size_val"] = 1
         cfg_c["nsamples_val"] = 100
-        pairs = {"dname":None,"nsamples_val":None,
+        pairs = {"dname":cfg.dname,"nsamples_val":None,
                  "nframes":5,"fstride":1,"isize":None,
                  "ntype":optional(cfg,'ntype','g'),
-                 "sigma":optional(cfg,'sigma',30)}
+                 "sigma":optional(cfg,'sigma',cfgs.tr.sigma)}
         for key in pairs.keys():
             default = optional(cfg,key,pairs[key])
             cfg_c[key] = optional(cfg,"%s_at_val" % key,default)
@@ -240,15 +244,15 @@ def run(cfg):
     print("Checkpoint Path: %s" % str(ckpt_path))
 
     # -- init validation performance --
-    # outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
-    # init_val_results,init_val_res_fn = outs
+    outs = run_validation(cfg,log_dir,pik_dir,timer,model,"val","init_val_te")
+    init_val_results,init_val_res_fn = outs
     # cfgs_val = dcopy(cfgs)
     # cfgs_val.tr.ndevices = 1
     # cfgs_val.tr.num_nodes = 1
     # trainer_val,_ = create_trainer(cfgs_val,log_dir,chkpt_dir)
     # trainer_val.validate(model=model,
     #                      dataloaders=loaders[dset_val],ckpt_path=ckpt_path)
-    init_val_results,init_val_res_fn = {"init_val_te":-1},""
+    # init_val_results,init_val_res_fn = {"init_val_te":-1},""
     # print("yo.")
 
     # -- training --
@@ -360,6 +364,7 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
         callbacks += [swa_callback]
     ndevices_local = int(cfgs.tr.ndevices/cfgs.tr.num_nodes)
     # print(cfgs.tr.num_nodes,cfgs.tr.ndevices,ndevices_local)
+<<<<<<< HEAD
     kwargs = {"accelerator":"gpu","precision":32,
               "accumulate_grad_batches":cfgs.tr.accumulate_grad_batches,
               "limit_train_batches":cfgs.tr.limit_train_batches,
@@ -382,6 +387,22 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
     #     kwargs["num_nodes"] = cfgs.tr.num_nodes
 
     trainer = pl.Trainer(**kwargs)
+#     trainer = pl.Trainer(accelerator="gpu",
+#                          num_nodes=cfgs.tr.num_nodes,
+#                          devices=ndevices_local,precision=32,
+#                          accumulate_grad_batches=cfgs.tr.accumulate_grad_batches,
+#                          limit_train_batches=cfgs.tr.limit_train_batches,
+#                          limit_val_batches=cfgs.tr.limit_val_batches,
+#                          # max_epochs=cfgs.tr.nepochs,
+#                          max_steps=cfgs.tr.nsteps,
+#                          num_sanity_val_steps=-1,
+#                          # val_check_interval=-1,
+#                          check_val_every_n_epoch=cfgs.tr.check_val_every_n_epoch,
+#                          log_every_n_steps=1,logger=logger,
+#                          gradient_clip_val=cfgs.tr.gradient_clip_val,
+#                          gradient_clip_algorithm=cfgs.tr.gradient_clip_algorithm,
+#                          callbacks=callbacks,detect_anomaly=True,
+#                          strategy="ddp_find_unused_parameters_false")
 
     return trainer,checkpoint_callback
 
@@ -493,10 +514,13 @@ class SaveCheckpointListBySteps(Callback):
         if "-" in save_steps:
             self.save_steps = [int(s) for s in save_steps.split("-")]
             self.save_type = "list"
+            print("Saving Checkpoint via Steps [list]: [%s,%d]"
+                  % (str(self.save_steps),nkeep))
         elif save_steps.startswith("by"):
             self.save_interval = int(save_steps.split("by")[-1])
             self.save_type = "interval"
-        print("Saving Checkpoint List by Steps: [%d,%d]" % (self.save_interval,nkeep))
+            print("Saving Checkpoint via Steps [by]: [%d,%d]"
+                  % (self.save_interval,nkeep))
 
     def on_train_batch_end(self, trainer, pl_module, *args):
         if not(rank_zero_only.rank == 0): return

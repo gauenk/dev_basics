@@ -7,6 +7,18 @@ from einops import rearrange,repeat
 from PIL import Image
 from pathlib import Path
 
+def save_raw_video(vid,root,name,itype="png",packed=True,contrast_fxn=None):
+    import dev_basics.utils.raw as raw_utils
+    vid = vid.clip(0,1)
+    vid = th.cat([vid,vid[:,:,[-1]]],2)
+    if packed == True:
+        vid = raw_utils.vid_packing(vid,'rgb2raw')
+        vid = vid.mean(-3,keepdim=True)
+    if vid.ndim == 4: # missing channel dimension
+        vid = vid[...,None,:,:]
+    vid_rgb = raw_utils.video_raw2rgb(vid,contrast_fxn=contrast_fxn)
+    save_video(vid_rgb,root,name,itype)
+
 def save_burst(burst,root,name):
     return save_video(burst,root,name)
 
