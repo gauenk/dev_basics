@@ -39,8 +39,8 @@ def channel_chunks(cfg,in_fwd):
     # -- run --
     out_fwd = in_fwd
     if not(size is None) and not(size == "none") and not(size <= 0):
-        out_fwd = lambda vid,flows: run_channel_chunks(in_fwd,size,overlap,vid,
-                                                       flows=flows,verbose=verbose)
+        out_fwd = lambda vid,flows=None: run_channel_chunks(in_fwd,size,overlap,vid,
+                                                            flows=flows,verbose=verbose)
     return out_fwd
 
 #

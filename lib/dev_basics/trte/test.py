@@ -45,7 +45,8 @@ def test_pairs():
              "internal_adapt_nepochs":0,"nframes":0,"read_flows":False,
              "save_deno":True,"python_module":"dev_basics.trte.id_model",
              "bench_bwd":False,"append_noise_map":False,"arch_name":"default",
-             "dd_in":3}
+             "dd_in":3,
+    }
     return pairs
 
 @econfig.set_init
@@ -99,6 +100,7 @@ def run(cfg):
 
     # -- load model --
     model = module.load_model(model_cfg).to("cuda")
+    model = model.eval()
 
     # -- data --
     imax = 255.
@@ -122,11 +124,12 @@ def run(cfg):
         region = sample['region']
         noisy,clean = sample['noisy'][None,],sample['clean'][None,]
         noisy,clean = noisy.to(tcfg.device),clean.to(tcfg.device)
+        # noisy,clean = noisy[:,:20],clean[:,:20]
         if "sigma" in sample:
             sample['sigma'] = sample['sigma'][None,].to(tcfg.device)
         noisy = ensure_chnls(tcfg.dd_in,noisy,sample)
         vid_frames = sample['fnums'].numpy()
-        print("[%d] noisy.shape: " % index,noisy.shape)
+        print("[%d] noisy.shape: " % index,noisy.shape,tcfg.dd_in)
 
         # -- resample noise for flow --
         if tcfg.flow_sigma >= 0:

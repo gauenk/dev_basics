@@ -201,9 +201,9 @@ def est_sigma(vid):
     if vid.ndim == 5:
         vid = vid[0]
     if vid.shape[1] == 3:
-        vid = vid.cpu().clone()
+        vid = vid.detach().cpu().clone()
         color.rgb2yuv(vid)
-    vid_np = vid.cpu().numpy()
+    vid_np = vid.detach().cpu().numpy()
     vid_np = vid_np[:,[0]] # Y only
     sigma = estimate_sigma(vid_np,channel_axis=1)[0]
     return sigma

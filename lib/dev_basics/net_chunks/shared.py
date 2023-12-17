@@ -2,6 +2,48 @@ import torch as th
 import numpy as np
 from ..common import optional
 
+
+"""
+
+  Handle Super-Resolution by Allocating after seeing the output dimensions
+
+"""
+
+def get_outputs(deno,Z,rH,rW,vid_out_chunk,vid_in_chunk,vid_in_full):
+    if deno is None:
+        return allocate_outputs(deno,Z,vid_out_chunk,vid_in_chunk,vid_in_full)
+    else:
+        return deno,Z,rH,rW
+
+def allocate_outputs(deno,Z,vid_out_chunk,vid_in_chunk,vid_in_full):
+    """
+
+    Allocate output shape depending on the network's output shape.
+
+    """
+    device = vid_out_chunk.device
+    H,W,rH,rW = get_output_spatial_size(vid_out_chunk,vid_in_chunk,vid_in_full)
+    oshape = list(vid_out_chunk.shape[:-2]) + [H,W]
+    if deno is None:
+        deno = th.zeros(oshape,device=device)
+    if Z is None:
+        Z = th.zeros((H,W),device=device)
+    return deno,Z,rH,rW
+
+def get_output_spatial_size(vid_out_chunk,vid_in_chunk,vid_in_full):
+    outH,outW = vid_out_chunk.shape[-2:]
+    inH,inW = vid_in_chunk.shape[-2:]
+    rH,rW = int(outH/(1.*inH)),int(outW/(1.*inW))
+    H,W = vid_in_full.shape[-2:]
+    outH,outW = rH*H,rW*W
+    return outH,outW,rH,rW
+
+"""
+
+  Misc
+
+"""
+
 def expand_match(vshape,tensor,dim):
 
     # -- append singletons --

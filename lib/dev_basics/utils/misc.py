@@ -115,16 +115,24 @@ def transpose_dict_list(pydict):
         pylists.append(pylist_l)
     return pylists
 
-def ensure_chnls(dd_in,noisy,batch):
+def ensure_chnls(dd_in,noisy,batch,chnl4="noise"):
     if noisy.shape[-3] == dd_in:
         return noisy
     elif noisy.shape[-3] == 4 and dd_in == 3:
         return noisy[...,:3,:,:].contiguous()
+    else:
+        if chnl4 == "noise":
+            return append_noisy(dd_in,noisy,batch)
+        else:
+            raise ValueError(f"Uknown chnl4: [{chnl4}]")
+    raise ValueError("Uknown.")
+
+def append_noisy(dd_in,noisy,batch):
     sigmas = []
     B,t,c,h,w = noisy.shape
     for b in range(B):
         sigma_b = batch['sigma'][b]
-        noise_b = th.ones(t,1,h,w,device=sigma_b.device) * sigma_b
+        noise_b = th.ones(t,1,h,w,device=noisy.device) * sigma_b
         sigmas.append(noise_b)
     sigmas = th.stack(sigmas)
     return th.cat([noisy,sigmas],2)

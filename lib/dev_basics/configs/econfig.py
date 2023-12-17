@@ -156,8 +156,9 @@ class ExtractConfig():
     def extract_pairs(self,_cfg,pairs,new=True,restrict=False): # internal api
         return extract_pairs(_cfg,pairs,self.optional,new=new,restrict=restrict)
 
-    def extract_set(self,dicts_of_pairs,new=True): # internal api
-        return self.extract_dict_of_pairs(self.cfg,dicts_of_pairs,new=new)
+    def extract_set(self,dicts_of_pairs,new=True,restrict=False): # internal api
+        return self.extract_dict_of_pairs(self.cfg,dicts_of_pairs,
+                                          new=new,restrict=restrict)
 
     # internal api
     def extract_dict_of_pairs(self,cfg,dicts_of_pairs,new=True,restrict=False):
