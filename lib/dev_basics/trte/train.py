@@ -364,7 +364,7 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
         callbacks += [swa_callback]
     ndevices_local = int(cfgs.tr.ndevices/cfgs.tr.num_nodes)
     # print(cfgs.tr.num_nodes,cfgs.tr.ndevices,ndevices_local)
-<<<<<<< HEAD
+# <<<<<<< HEAD
     kwargs = {"accelerator":"gpu","precision":32,
               "accumulate_grad_batches":cfgs.tr.accumulate_grad_batches,
               "limit_train_batches":cfgs.tr.limit_train_batches,
