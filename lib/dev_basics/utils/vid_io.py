@@ -55,7 +55,12 @@ def _save_video(vid,root,name,itype="png"):
         save_fns.append(str(path_t))
     return save_fns
 
-def save_image(image,base,itype):
+def save_image(image,base,itype="png"):
+    # print("image.shape: ",image.shape)
+    if not Path(base).parents[0].exists():
+        Path(base).parents[0].mkdir(parents=True)
+    if th.is_tensor(image):
+        image = image.cpu().detach().numpy()
     if itype == "png":
         save_image_png(image,base)
     elif itype == "np":

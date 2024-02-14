@@ -89,9 +89,9 @@ def run_temporal_chunks(fwd_fxn,tsize,overlap,vid,flows=None,verbose=True):
         deno,_,rH,rW = get_outputs(deno,Z,rH,rW,deno_chunk,vid_chunk,vid)
 
         # -- accumulate --
+        nf,Cout = deno_chunk.shape[-4:-2]
         # print(deno.shape,deno_chunk.shape,vid.shape,t_slice)
-        Cout = deno_chunk.shape[-3]
-        deno[...,t_slice,:Cout,:,:] += deno_chunk
+        deno[...,t_chunk:t_chunk+nf,:Cout,:,:] += deno_chunk
         Z[t_slice] += 1
 
     # -- normalize --

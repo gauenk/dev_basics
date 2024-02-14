@@ -1,5 +1,6 @@
 
 # -- imports --
+import inspect
 from easydict import EasyDict as edict
 from .space import space_chunks,extract_space_config
 from .time import time_chunks,extract_time_config
@@ -30,8 +31,13 @@ def chunk(cfg,model):
                     "time":extract_time_config(cfg)})
     if econfig.is_init: return
 
+    # -- add empty flows if needed --
+    nargs = model.__code__.co_argcount
+    assert nargs in [1,2,3]
+    if nargs == 1: model_fwd = lambda vid,flows=None: model(vid)
+    else: model_fwd = lambda vid,flows=None: model(vid,flows=flows)
+
     # -- chunking --
-    model_fwd = lambda vid,flows=None: model(vid,flows=flows)
     model_fwd = channel_chunks(cfgs.channel,model_fwd)
     model_fwd = space_chunks(cfgs.space,model_fwd)
     model_fwd = time_chunks(cfgs.time,model_fwd)

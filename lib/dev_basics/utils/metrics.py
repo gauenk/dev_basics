@@ -14,7 +14,7 @@ def compute_batched(compute_fxn,clean,deno,div=255.):
     metric = np.array(metric)
     return metric
 
-def compute_ssims(clean,deno,div=255.):
+def compute_ssims(clean,deno,div=1.):
     # -- optional batching --
     if clean.ndim == 5:
         return compute_batched(compute_ssims,clean,deno,div)
@@ -44,7 +44,7 @@ def compute_ssims(clean,deno,div=255.):
     ssims = np.array(ssims)
     return ssims
 
-def compute_psnrs(clean,deno,div=255.):
+def compute_psnrs(clean,deno,div=1.):
     # -- optional batching --
     if clean.ndim == 5:
         return compute_batched(compute_psnrs,clean,deno,div)
@@ -71,7 +71,7 @@ def compute_psnrs(clean,deno,div=255.):
         psnrs.append(psnr_ti)
     return np.array(psnrs)
 
-def compute_strred(clean,deno,div=255):
+def compute_strred(clean,deno,div=1):
 
     # -- optional batching --
     if clean.ndim == 5:

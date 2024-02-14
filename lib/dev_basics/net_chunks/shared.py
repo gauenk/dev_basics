@@ -22,8 +22,9 @@ def allocate_outputs(deno,Z,vid_out_chunk,vid_in_chunk,vid_in_full):
 
     """
     device = vid_out_chunk.device
+    C = vid_out_chunk.shape[-3]
     H,W,rH,rW = get_output_spatial_size(vid_out_chunk,vid_in_chunk,vid_in_full)
-    oshape = list(vid_out_chunk.shape[:-2]) + [H,W]
+    oshape = list(vid_in_full.shape[:-3]) + [C,H,W]
     if deno is None:
         deno = th.zeros(oshape,device=device)
     if Z is None:

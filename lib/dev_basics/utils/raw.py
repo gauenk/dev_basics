@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 import torch as th
 from PIL import Image
@@ -135,6 +134,7 @@ def raw2rgb(raw,xyz2cam=None,rescale=True,contrast_fxn=None):
 
     # Demosaicing:
     temp = np.round((balanced_bayer*(2**16-1))).astype(np.uint16)  # Convert from double to np.uint16, because OpenCV demosaic() function requires a uint8 or uint16 input.
+    import cv2
     lin_rgb = cv2.cvtColor(temp, cv2.COLOR_BayerBG2RGB).astype(np.float64)/(2**16-1)  # Apply Demosaicing and convert back to np.float64 in range [0, 1] (is there a bug in OpenCV Bayer naming?).
 
     # Color Space Conversion
@@ -200,6 +200,7 @@ def raw2rgb(raw,xyz2cam=None,rescale=True,contrast_fxn=None):
 def main():
     filename = "data/calibrate/IMG_1329.CR2"
     sRGB = file_raw2rgb(filename)
+    import cv2
     cv2.imwrite('sRGB.png', cv2.cvtColor((sRGB*255).astype(np.uint8), cv2.COLOR_RGB2BGR))
 
 

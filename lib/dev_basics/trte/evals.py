@@ -7,8 +7,11 @@ Evaluation classes
 # -- utils --
 from dev_basics.utils import vid_io
 from pathlib import Path
-import detectron2
-from detectron2.evaluation import COCOEvaluator
+try:
+    import detectron2
+    from detectron2.evaluation import COCOEvaluator
+except:
+    pass
 
 def get_evaluator(cfg,test_task):
     if test_task == "deno":

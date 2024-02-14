@@ -15,7 +15,10 @@ from skimage.restoration import estimate_sigma
 from easydict import EasyDict as edict
 
 # -- opencv --
-import cv2 as cv
+try:
+    import cv2 as cv
+except:
+    pass
 
 # -- svnb --
 try:

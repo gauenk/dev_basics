@@ -19,6 +19,7 @@ extract_space_config = econfig.extract_config
 def space_pairs():
     pairs = {"spatial_chunk_size":0,
              "spatial_chunk_overlap":0,
+             "spatial_chunk_sr":-1,
              "spatial_chunk_verbose":False}
     return pairs
 
@@ -33,13 +34,14 @@ def space_chunks(cfg,in_fwd):
 
     # -- unpack --
     size = cfg.spatial_chunk_size
+    sr = cfg.spatial_chunk_sr
     overlap = cfg.spatial_chunk_overlap
     verbose = cfg.spatial_chunk_verbose
     out_fwd = in_fwd
 
     # -- run --
     if not(size is None) and not(size == "none") and not(size <= 0):
-        out_fwd = lambda vid,flows=None: run_spatial_chunks(in_fwd,size,overlap,vid,
+        out_fwd = lambda vid,flows=None: run_spatial_chunks(in_fwd,size,overlap,sr,vid,
                                                             flows=flows,verbose=verbose)
     return out_fwd
 
@@ -47,7 +49,7 @@ def space_chunks(cfg,in_fwd):
 # -- meat --
 #
 
-def run_spatial_chunks(fwd_fxn,size,overlap,vid,flows=None,verbose=False):
+def run_spatial_chunks(fwd_fxn,size,overlap,sr,vid,flows=None,verbose=False):
     """
 
     overlap is a _percent_
@@ -58,20 +60,27 @@ def run_spatial_chunks(fwd_fxn,size,overlap,vid,flows=None,verbose=False):
     vprint = partial(_vprint,verbose)
     H,W = vid.shape[-2:] # .... H, W
     C = vid.shape[-3]
+    if sr > 0: oH,oW = int(sr*H),int(sr*W)
+    else: oH,oW = H,W
+    if sr <= 0: sr = 1
 
     # -- output shape --
-    # Cout = 3 if C in [3,4] else C
-    Cout = C
+    Cout = 3 if C in [3,4] else C
+    # Cout = C
     oshape = list(vid.shape)
     oshape[-3] = Cout
+    oshape[-2] = oH
+    oshape[-1] = oW
 
     # -- get chunks --
     h_chunks = get_chunks(H,size,overlap)
     w_chunks = get_chunks(W,size,overlap)
+    # print("h_chunks: ",h_chunks,H,W,oH,oW,sr)
+    # print("w_chunks: ",w_chunks)
 
     # -- alloc --
     deno = th.zeros(oshape,device=vid.device)
-    Z = th.zeros((H,W),device=vid.device)
+    Z = th.zeros((oH,oW),device=vid.device)
     # deno,Z = None,None
     # rH,rW = None,None
 
@@ -86,16 +95,29 @@ def run_spatial_chunks(fwd_fxn,size,overlap,vid,flows=None,verbose=False):
             else: deno_chunk = fwd_fxn(vid_chunk,flow_chunk)
             # deno,Z,rH,rW = get_outputs(deno,Z,rH,rW,deno_chunk,vid_chunk,vid)
             Cout,sizeH,sizeW = deno_chunk.shape[-3:]
-            fill_spatial_chunk(deno,deno_chunk,h_chunk,w_chunk,sizeH,sizeW)
-            fill_spatial_chunk(Z,1,h_chunk,w_chunk,sizeH,sizeW)
+            # print(deno.shape,deno_chunk.shape,h_chunk,w_chunk)
+            fill_spatial_chunk(deno,deno_chunk,sr*h_chunk,sr*w_chunk,sizeH,sizeW)
+            fill_spatial_chunk(Z,1,sr*h_chunk,sr*w_chunk,sizeH,sizeW)
+            # print(deno_chunk[0,0,0,:3,:3])
+            # print(deno[0,0,0,62:66,206:210])
+            # print(Z[62:66,206:210])
             # fill_spatial_chunk(deno,deno_chunk,rH*h_chunk,rW*w_chunk)
             # fill_spatial_chunk(Z,1,rH*h_chunk,rW*w_chunk)
 
     # -- normalize --
+    # print(Z.unique())
     eshape = (1,) * len(deno.shape[:-2])
     eshape += deno.shape[-2:]
     Z = Z.expand(eshape)
+    # print(deno[0,0,0,62:66,206:210])
+    # print(Z[0,0,0,62:66,206:210])
+
     deno /= Z # normalize across overlaps
+
+    # print(deno[0,0,0,62:66,206:210])
+    # print(Z[0,0,0,62:66,206:210])
+    # print("-"*20)
+
     return deno
 
 #
