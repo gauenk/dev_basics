@@ -138,6 +138,18 @@ def run(cfg):
     print("PID: ",os.getpid())
     th.set_float32_matmul_precision('medium')
 
+    # -- slurm info --
+    print("rank_zero_only.rank: ",rank_zero_only.rank)
+    # lrank,grank = rank_zero_only.rank % 2,rank_zero_only.rank // 2
+    # os.environ['LOCAL_RANK'] = str(lrank)
+    # os.environ['GLOBAL_RANK'] = str(grank)
+    print("LOCAL_RANK: ",int(os.environ.get('LOCAL_RANK', -1)))
+    print("GLOBAL_RANK: ",int(os.environ.get('GLOBAL_RANK', -1)))
+    print('SLURM_NTASKS =', optional(os.environ,'SLURM_NTASKS',None))
+    print('SLURM_TASKS_PER_NODE =', optional(os.environ,'SLURM_TASKS_PER_NODE',None))
+    print('SLURM_GPUS_PER_NODE =', optional(os.environ,'SLURM_GPUS_PER_NODE',None))
+    print('SLURM_NNODES =', optional(os.environ,'SLURM_NNODES',None))
+
     # -- set seed --
     seed_num = cfgs.tr.seed
     if cfg.offset_seed_rank:
@@ -352,22 +364,45 @@ def create_trainer(cfgs,log_dir,chkpt_dir):
         callbacks += [swa_callback]
     ndevices_local = int(cfgs.tr.ndevices/cfgs.tr.num_nodes)
     # print(cfgs.tr.num_nodes,cfgs.tr.ndevices,ndevices_local)
-    trainer = pl.Trainer(accelerator="gpu",
-                         num_nodes=cfgs.tr.num_nodes,
-                         devices=ndevices_local,precision=32,
-                         accumulate_grad_batches=cfgs.tr.accumulate_grad_batches,
-                         limit_train_batches=cfgs.tr.limit_train_batches,
-                         limit_val_batches=cfgs.tr.limit_val_batches,
-                         # max_epochs=cfgs.tr.nepochs,
-                         max_steps=cfgs.tr.nsteps,
-                         num_sanity_val_steps=-1,
-                         # val_check_interval=-1,
-                         check_val_every_n_epoch=cfgs.tr.check_val_every_n_epoch,
-                         log_every_n_steps=1,logger=logger,
-                         gradient_clip_val=cfgs.tr.gradient_clip_val,
-                         gradient_clip_algorithm=cfgs.tr.gradient_clip_algorithm,
-                         callbacks=callbacks,detect_anomaly=True,
-                         strategy="ddp_find_unused_parameters_false")
+# <<<<<<< HEAD
+    kwargs = {"accelerator":"gpu","precision":32,
+              "accumulate_grad_batches":cfgs.tr.accumulate_grad_batches,
+              "limit_train_batches":cfgs.tr.limit_train_batches,
+              "limit_val_batches":cfgs.tr.limit_val_batches,
+              # max_epochs=cfgs.tr.nepochs,
+              "max_steps":cfgs.tr.nsteps,
+              # num_sanity_val_steps=-1,
+              # val_check_interval=-1,
+              # check_val_every_n_epoch=1,
+              "log_every_n_steps":1,"logger":logger,
+              "gradient_clip_val":cfgs.tr.gradient_clip_val,
+              "gradient_clip_algorithm":cfgs.tr.gradient_clip_algorithm,
+              "callbacks":callbacks,"detect_anomaly":True,
+              "strategy":"ddp_find_unused_parameters_false"}
+    # if ndevices_local > -1:
+    print("num_nodes,ndevices_local: ",cfgs.tr.num_nodes,ndevices_local)
+    kwargs["devices"] = ndevices_local
+    kwargs["num_nodes"] = cfgs.tr.num_nodes
+    # if cfgs.tr.num_nodes > 1:
+    #     kwargs["num_nodes"] = cfgs.tr.num_nodes
+
+    trainer = pl.Trainer(**kwargs)
+#     trainer = pl.Trainer(accelerator="gpu",
+#                          num_nodes=cfgs.tr.num_nodes,
+#                          devices=ndevices_local,precision=32,
+#                          accumulate_grad_batches=cfgs.tr.accumulate_grad_batches,
+#                          limit_train_batches=cfgs.tr.limit_train_batches,
+#                          limit_val_batches=cfgs.tr.limit_val_batches,
+#                          # max_epochs=cfgs.tr.nepochs,
+#                          max_steps=cfgs.tr.nsteps,
+#                          num_sanity_val_steps=-1,
+#                          # val_check_interval=-1,
+#                          check_val_every_n_epoch=cfgs.tr.check_val_every_n_epoch,
+#                          log_every_n_steps=1,logger=logger,
+#                          gradient_clip_val=cfgs.tr.gradient_clip_val,
+#                          gradient_clip_algorithm=cfgs.tr.gradient_clip_algorithm,
+#                          callbacks=callbacks,detect_anomaly=True,
+#                          strategy="ddp_find_unused_parameters_false")
 
     return trainer,checkpoint_callback
 
@@ -405,7 +440,8 @@ def run_validation(cfg,log_dir,pik_dir,timer,model,dset,name):
     print("len(loaders.val): ",len(loaders.val))
     # print("len(data.te): ",len(data.te))
     # print("len(loaders.te): ",len(loaders.te))
-
+    if not(rank_zero_only.rank != 0): 
+        return {},{}
 
     # -- set model's isize --
     model.isize = cfg.isize
