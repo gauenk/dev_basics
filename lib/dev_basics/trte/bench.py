@@ -51,9 +51,13 @@ def run_loaded(model,vid,run_flows=False,with_flows=False,fwd_only=False,chunk_f
         with MemIt(memer,"flows"):
             flows = flow.orun(vid,run_flows)
 
+    print(model)
     # -- def forward --
     def forward(vid):
-        fwd_fxn = chunk_fxn(model.forward)
+        if hasattr(model,"forward") and not(chunk_fxn is None):
+            fwd_fxn = chunk_fxn(model.forward)
+        else:
+            fwd_fxn = model
         if with_flows:
             return fwd_fxn(vid,flows=flows)
         else:
